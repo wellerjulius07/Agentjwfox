@@ -1,3 +1,6 @@
 # graphify writes PreToolUse hook-guard hooks here; they need the
 # graphify CLI on PATH, so keep them machine-local.
 .claude/settings.json
+
+# graphify build cache (the graph itself may be committed if you want it)
+graphify-out/cache/
