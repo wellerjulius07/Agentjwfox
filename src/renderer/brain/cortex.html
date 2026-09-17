@@ -397,6 +397,11 @@
   .kal-punkte i.klausur{--c:var(--alarm);width:5px;height:5px}
   .kal-tag.klausur b{color:var(--alarm);font-weight:500}
   .kal-neu{margin-left:auto}
+  .standfeld{display:flex;align-items:center;gap:8px;font-family:var(--f-mono);font-size:10px;
+    letter-spacing:.06em;text-transform:uppercase;color:var(--mist)}
+  .standfeld input{width:92px;background:var(--shell);border:1px solid var(--line-2);border-radius:var(--r);
+    color:var(--bone);font:inherit;font-size:13.5px;padding:5px 8px;font-variant-numeric:tabular-nums}
+  .standfeld input:focus{outline:2px solid var(--synapse);outline-offset:-1px;border-color:var(--synapse)}
   .modwahl{display:flex;flex-direction:column;padding:2px 11px;border-radius:var(--r);background:var(--raise)}
   .modzeile{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:10px;
     padding:9px 0;cursor:pointer;font-size:13.5px}
@@ -645,7 +650,8 @@
   const S = {
     mcp: null, db: null, sample: null, caps: false,
     projektMeta: null, projekt: null, events: null,
-    zustand: null, bericht: null, themen: [], klausuren: [], vorlesungen: null, vorschlaege: [], agenten: {}, journal: [],
+    zustand: null, bericht: null, rueckblick: null, themen: [], klausuren: [], projekte: [],
+    vorlesungen: null, vorschlaege: [], agenten: {}, journal: [],
     plan: null, tafelStand: null,
     err: { todoist: null, kalender: null, db: null },
   };
@@ -1259,7 +1265,8 @@
         <div class="z-a">${btn(`data-do="blick" data-blick="gehirn"`, "Aufbau ansehen", "mini")}</div></div>`, true);
       return;
     }
-    el.innerHTML = klausurSektion() + planSektion() + jetztSektion() + kommtSektion() + rechnerSektion() + wiederholenSektion();
+    el.innerHTML = klausurSektion() + projektSektion() + planSektion() + jetztSektion() + kommtSektion()
+      + rechnerSektion() + wiederholenSektion();
   }
 
   // ---------------------------------------------------------------- Statuszeile
@@ -1313,6 +1320,7 @@
     if (art === "termin") return termine().find((e) => e.id === id) || null;
     if (art === "thema") return themen().find((t) => t.id === id) || null;
     if (art === "klausur") return klausuren().find((k) => k.id === id) || null;
+    if (art === "projekt") return projekte().find((p) => p.id === id) || null;
     if (art === "warnung") return warnungen().find((w) => w.id === id) || null;
     return null;
   }
@@ -1349,6 +1357,7 @@
         { art, id });
       return;
     }
+    if (art === "projekt") { blattProjekt(x); return; }
     if (art === "klausur") {
       const st = klausurStand(x), T = klausurThemen(x);
       const mods = [...new Set(T.map((t) => t.modul))];
@@ -1460,11 +1469,16 @@
       if (ph.length) inhalt += block("Phasen", liste(ph, (x) => `<li class="z"><i></i>
         <div class="z-t">${x.nr} · ${esc(x.name)}</div><div class="z-r">${x.status === "erledigt" ? "erledigt" : "offen"}</div></li>`));
     } else if (id === "bericht") {
-      const b = S.bericht;
+      const b = S.bericht, r = S.rueckblick;
       if (!b) inhalt += p("Noch kein Bericht. Er entsteht beim nächsten Morgenlauf.");
       else { inhalt += fakten([["Stand", esc(stempel(b.stand))]]);
         for (const a of b.abschnitte || []) inhalt += block(a.titel, (a.punkte || []).length
           ? liste(a.punkte, (x) => `<li class="z ${a.ton || ""}"><i></i><div class="z-t">${esc(x)}</div></li>`) : leer("Nichts.")); }
+      if (r) {
+        inhalt += `<h4 style="margin-top:8px">Rückblick · ${esc(stempel(r.stand))}</h4>`;
+        for (const a of r.abschnitte || []) inhalt += block(a.titel, (a.punkte || []).length
+          ? liste(a.punkte, (x) => `<li class="z ${a.ton || ""}"><i></i><div class="z-t">${esc(x)}</div></li>`) : leer("Nichts."));
+      }
     } else if (id === "du") {
       inhalt += block("Zuletzt angelegt", S.journal.length ? liste(S.journal.slice(0, 8), (j) => `<li class="z"><i></i>
         <div class="z-t">${esc(j.titel)}</div><div class="z-r">${esc(stempel(j.am))}</div>
@@ -1576,6 +1590,21 @@
     && minuten(berlin().time) < 14 * 60 && aufgaben().length > 0;
 
   function tafelZeichnen() {
+    if (tafelAktiv?.modus === "vorlesung") {
+      const v = tafelAktiv.vorlesung;
+      tafelKarte.innerHTML = `<div class="tafel-kopf">
+          <h2 id="tafelTitel">Heute war ${esc(v.vorlesung.kurz)}. Was kam dran?</h2>
+          <p>Ein Stichwort pro Zeile. Jedes wird ein Lernthema und kommt nach 1, 3, 7, 16 und 35 Tagen wieder.</p></div>
+        <div class="felder">
+          <div class="feld"><label for="vlNamen">Themen</label>
+            <textarea id="vlNamen" rows="3" placeholder="Vollständige Induktion&#10;Binomialkoeffizienten"></textarea></div>
+        </div>
+        <div class="tafel-fuss">
+          ${btn(`data-do="vorlesungMerken" data-id="${esc(v.id)}" data-fach="${esc(v.fach)}"`, "Merken", "primary")}
+          <span class="weg">${btn(`data-do="passt" data-tafel="1" data-art="vorlesung" data-id="${esc(v.id)}"`, "Nichts davon", "mini still")}</span>
+        </div>`;
+      return;
+    }
     if (tafelAktiv?.modus === "planung") {
       const A = aufgaben().sort((a, b) => (a.tage ?? 999) - (b.tage ?? 999)).slice(0, 8);
       tafelKarte.innerHTML = `<div class="tafel-kopf">
@@ -1612,8 +1641,8 @@
   }
 
   let vorherFokus = null;
-  function tafelOeffnen(modus, karten) {
-    tafelAktiv = { modus, karten: karten || [] };
+  function tafelOeffnen(modus, karten, vorlesung) {
+    tafelAktiv = { modus, karten: karten || [], vorlesung: vorlesung || null };
     vorherFokus = document.activeElement;
     tafelZeichnen();
     tafelEl.hidden = false;
@@ -1642,6 +1671,11 @@
       tafelMerken({ slots: { ...(S.tafelStand?.slots || {}), [slot]: h } });
     }
     if (brauchtPlanung() && (anlass === "start" || anlass === "zeit:08:30")) return tafelOeffnen("planung");
+    // Abends zählt die Vorlesung mehr als die Liste: der Stoff ist noch frisch.
+    if (nachfrageFaellig()) {
+      const v = vorlesungenHeute()[0];
+      if (v) return tafelOeffnen("vorlesung", [], v);
+    }
     const k = tafelKandidaten();
     if (k.length) tafelOeffnen("karten", k);
   }
@@ -2017,7 +2051,9 @@
     const nachTafelAktion = (schluessel) => {
       if (!tafelHier || !tafelAktiv) return;
       tafelAktiv.karten = (tafelAktiv.karten || []).filter((k) => tafelSchluessel(k) !== schluessel);
-      if (!tafelAktiv.karten.length && tafelAktiv.modus !== "planung") tafelSchliessen(); else tafelZeichnen();
+      if (!tafelAktiv.karten.length && !["planung", "vorlesung"].includes(tafelAktiv.modus)) tafelSchliessen();
+      else if (tafelAktiv.modus === "vorlesung") tafelSchliessen();
+      else tafelZeichnen();
     };
 
     switch (d.do) {
@@ -2092,6 +2128,28 @@
       }
       case "planwahl": blattPlanwahl(); break;
       case "themaNeu": blattThemaNeu(); break;
+      case "projektStand": {
+        const pr = findeSache("projekt", d.id);
+        const feld = blattBody.querySelector(`input[data-ziel="${CSS.escape(d.ziel)}"]`);
+        if (!pr || !feld) break;
+        const wert = Math.max(0, Math.round(Number(feld.value) || 0));
+        el.disabled = true;
+        if (await projektStand(pr, d.ziel, wert)) blattProjekt(findeSache("projekt", d.id) || pr);
+        else el.disabled = false;
+        break;
+      }
+      case "vorlesungMerken": {
+        const zeilen = ($("#vlNamen")?.value || "").split("\n").map((z) => z.trim()).filter(Boolean);
+        if (!zeilen.length) { toast("Ohne Stichwort gibt es nichts zu merken."); break; }
+        el.disabled = true;
+        // Das Fach ist die Todoist-Sektion; die Themen laufen unter ihrem Modul,
+        // sofern es eins gibt — sonst unter dem Fach selbst.
+        const modul = moduleMitThemen().find((m) => themen().some((t) => t.modul === m && t.modulStart <= heute() && (!t.modulEnde || t.modulEnde >= heute()))) || d.fach;
+        const n = await themaAnlegen(zeilen.map((name) => ({ name, modul })));
+        if (n) { await tafelMerken({ gesehenZusatz: ["vorlesung:" + d.id] }); tafelSchliessen(); }
+        else el.disabled = false;
+        break;
+      }
       case "klausurNeu": blattKlausurNeu(); break;
       case "themaAnlegen": {
         const zeilen = ($("#thNamen")?.value || "").split("\n").map((z) => z.trim()).filter(Boolean);
@@ -2344,6 +2402,98 @@
       <div class="z-a" style="margin:0">${btn(`data-do="klausurAnlegen"`, "Eintragen", "primary")}</div>`);
   }
 
+  // ---------------------------------------------------------------- Abgaben
+  // Eine Seminararbeit über fünf Monate ist kein Häkchen, sondern eine Strecke.
+  // Ein Projekt trägt Ziele mit Einheiten, und daraus fällt die Frage heraus,
+  // die wirklich zählt: wie viel pro Woche, damit es reicht.
+  function projekte() {
+    return (S.projekte || [])
+      .filter((p) => /^\d{4}-\d{2}-\d{2}$/.test(p.abgabe || ""))
+      .map((p) => {
+        const tage = tageBis(p.abgabe);
+        const wochen = Math.max(1, Math.ceil(Math.max(tage, 0) / 7));
+        const ziele = (Array.isArray(p.ziele) ? p.ziele : []).map((z) => {
+          const ziel = Number(z.ziel) || 0, stand = Number(z.stand) || 0;
+          return { ...z, ziel, stand, anteil: ziel > 0 ? clamp(stand / ziel, 0, 1) : 0,
+            proWoche: Math.max(0, Math.ceil((ziel - stand) / wochen)) };
+        });
+        return { ...p, art: "projekt", titel: p.name, tage, wochen, ziele,
+          anteil: ziele.length ? ziele.reduce((s, z) => s + z.anteil, 0) / ziele.length : 0 };
+      })
+      .filter((p) => p.tage >= -7)
+      .sort((a, b) => a.tage - b.tage);
+  }
+
+  const projektTon = (p) => p.tage < 0 ? "alarm" : p.tage <= 14 ? "soon" : p.anteil > 0.6 ? "satt" : "ruhig";
+
+  function projektZeile(p) {
+    const farbe = p.anteil > 0.6 ? "var(--ok)" : p.anteil > 0.25 ? "var(--soon)" : "var(--alarm)";
+    const stand = p.ziele.map((z) => `${z.name}: ${zahl(z.stand)} von ${zahl(z.ziel)}${z.einheit ? " " + z.einheit : ""}`).join(" · ");
+    return `<div class="z ${projektTon(p)}"><i></i>
+      <div class="z-t"><button type="button" data-do="blatt" data-art="projekt" data-id="${esc(p.id)}">${esc(p.name)}</button></div>
+      <div class="z-r">${esc(p.tage < 0 ? "überfällig" : p.tage === 0 ? "heute" : `noch ${p.tage} Tage`)}</div>
+      <div class="z-m">${esc(stand || "noch keine Ziele")}${p.fach ? " · " + esc(p.fach) : ""}
+        ${p.ziele.length ? `<span class="bar" style="--c:${farbe}"><b style="width:${Math.round(p.anteil * 100)}%"></b></span>` : ""}</div>
+    </div>`;
+  }
+
+  function projektSektion() {
+    if (!S.db) return "";
+    const P = projekte();
+    if (!P.length) return "";
+    return sekt("Abgaben", P[0].tage >= 0 ? `nächste in ${P[0].tage} Tagen` : "überfällig",
+      `<div class="sekt">${P.map(projektZeile).join("")}</div>`, true);
+  }
+
+  async function projektStand(p, name, wert) {
+    if (!S.db) { toast("Der Speicher ist in dieser Ansicht nicht verfügbar."); return false; }
+    const ziele = (Array.isArray(p.ziele) ? p.ziele : [])
+      .map((z) => (z.name === name ? { name: z.name, einheit: z.einheit || null, ziel: Number(z.ziel) || 0, stand: wert } : { name: z.name, einheit: z.einheit || null, ziel: Number(z.ziel) || 0, stand: Number(z.stand) || 0 }));
+    try {
+      await S.db.doc("projekte/" + p.id).update({ ziele, zuletzt: new Date().toISOString() });
+      toast(`${kurz(p.name, 26)} · ${kurz(name, 18)}: ${zahl(wert)}.`);
+      return true;
+    } catch (e) { toast(dbText(e)); return false; }
+  }
+
+  function blattProjekt(p) {
+    const rest = p.ziele.filter((z) => z.ziel > z.stand);
+    blattZeigen(`<h3>${esc(p.name)}</h3>
+      ${fakten([["Abgabe", esc(langDatum(p.abgabe))],
+        ["Noch", esc(p.tage < 0 ? "überfällig" : `${p.tage} Tage, rund ${p.wochen} ${p.wochen === 1 ? "Woche" : "Wochen"}`)],
+        ["Fach", esc(p.fach || "")],
+        ["Gruppe", esc(Array.isArray(p.gruppe) ? p.gruppe.join(", ") : (p.gruppe || ""))]])}
+      ${p.notiz ? `<p>${esc(p.notiz)}</p>` : ""}
+      ${p.ziele.length ? block("Stand", p.ziele.map((z) => `<div class="z ${z.anteil >= 1 ? "satt" : "ruhig"}"><i></i>
+        <div class="z-t">${esc(z.name)}</div>
+        <div class="z-r">${esc(zahl(z.stand) + " / " + zahl(z.ziel))}</div>
+        <div class="z-m">${z.anteil >= 1 ? "fertig" : `noch ${esc(zahl(z.ziel - z.stand))}${z.einheit ? " " + esc(z.einheit) : ""} · rund ${esc(zahl(z.proWoche))} pro Woche`}
+          <span class="bar" style="--c:${z.anteil >= 1 ? "var(--ok)" : "var(--synapse)"}"><b style="width:${Math.round(z.anteil * 100)}%"></b></span></div>
+        <div class="z-a">
+          <label class="standfeld"><span>neuer Stand</span>
+            <input type="number" min="0" step="1" id="pz${esc(z.name).replace(/\W/g, "")}" value="${z.stand}"
+              data-ziel="${esc(z.name)}" inputmode="numeric"></label>
+          ${btn(`data-do="projektStand" data-id="${esc(p.id)}" data-ziel="${esc(z.name)}"`, "Eintragen", "mini primary")}
+        </div></div>`).join("")) : ""}
+      ${(p.hinweise || []).length ? block("Nicht vergessen", `<ul class="liste">${p.hinweise
+        .map((h) => `<li class="z"><i></i><div class="z-t">${esc(h)}</div></li>`).join("")}</ul>`) : ""}`,
+      { art: "projekt", id: p.id });
+  }
+
+  // ---------------------------------------------------------------- Nach der Vorlesung
+  // Der Kreis zwischen Stundenplan und Gedächtnis: abends fragt die Tafel, was
+  // drankam. Zwanzig Sekunden, und das Gedächtnis füllt sich nebenbei statt
+  // in einem Kraftakt vor der Klausur.
+  const NACHFRAGE_AB = 16 * 60;                            // erst nachmittags, nicht mitten in der Vorlesung
+
+  function vorlesungenHeute() {
+    const h = heute(), gesehen = gesehenHeute();
+    return termine().filter((e) => e.datum === h && e.vorlesung && e.fach
+      && !gesehen.includes("vorlesung:" + e.id)
+      && (!e.endUhr || minuten(e.endUhr) <= minuten(berlin().time)));
+  }
+  const nachfrageFaellig = () => S.db && minuten(berlin().time) >= NACHFRAGE_AB && vorlesungenHeute().length > 0;
+
   // ---------------------------------------------------------------- Kalender
   // Sechs Wochen ab dem Montag dieser Woche — genau das Fenster, das auch
   // geladen wird. Ein Monatsraster wäre die gewohntere Form, würde aber Tage
@@ -2497,7 +2647,8 @@
   // Runde mit drei Werkzeugen aus wie eine Minute Stillstand.
   const WERKZEUG_WORT = { aufgaben_erledigen: "hakt ab", verschieben: "verschiebt", anlegen: "legt an",
     thema_wiederholt: "Gedächtnis", thema_anlegen: "merkt sich", klausur_anlegen: "Klausur",
-    vorlesung_zuordnen: "ordnet zu", tagesplan_setzen: "Tagesplan" };
+    vorlesung_zuordnen: "ordnet zu", projekt_stand: "Abgabe", projekt_anlegen: "Abgabe",
+    tagesplan_setzen: "Tagesplan" };
   function jChip(name) {
     if (!jAktiv) return;
     let box = jAktiv.querySelector(".j-tools");
@@ -2558,6 +2709,10 @@
     const K = klausuren();
     if (K.length) L.push("KLAUSUREN (fach | datum | in Tagen):",
       ...K.map((k) => `- ${k.fach} | ${k.datum}${k.uhrzeit ? " " + k.uhrzeit : ""} | ${k.tage}`), "");
+
+    const P = projekte();
+    if (P.length) L.push("ABGABEN (id | name | abgabe | ziele):",
+      ...P.map((x) => `- ${x.id} | ${x.name} | ${x.abgabe} | ${x.ziele.map((z) => `${z.name} ${z.stand}/${z.ziel}`).join(", ") || "-"}`), "");
 
     const ids = planIds();
     if (S.db) L.push("DREI FÜR HEUTE:", ...(ids.length ? ids.map((id) => "- " + id) : ["(noch nichts gewählt)"]), "");
@@ -2693,6 +2848,55 @@
           jChip("klausur_anlegen");
           return (await klausurAnlegen([{ fach, datum, uhrzeit, ort, module: mods }]))
             ? "Klausur steht." : "Das Datum muss YYYY-MM-DD sein und ein Fach dabei.";
+        },
+      });
+
+      T.push({
+        name: "projekt_stand",
+        description: "Trägt den Fortschritt einer Abgabe ein, z. B. wie viele Worte geschrieben sind. Der Stand ist die Gesamtzahl, nicht der Zuwachs.",
+        inputSchema: { type: "object", properties: {
+          id: { type: "string", description: "id aus ABGABEN" },
+          ziel: { type: "string", description: "Name des Ziels, exakt wie in ABGABEN" },
+          stand: { type: "number", description: "neuer Gesamtstand" },
+        }, required: ["id", "ziel", "stand"] },
+        async execute({ id, ziel, stand }) {
+          jChip("projekt_stand");
+          const pr = findeSache("projekt", String(id));
+          if (!pr) return "Diese Abgabe steht nicht in der Lage.";
+          if (!pr.ziele.some((z) => z.name === String(ziel))) return `„${ziel}“ ist kein Ziel dieser Abgabe.`;
+          return (await projektStand(pr, String(ziel), Math.max(0, Math.round(Number(stand) || 0))))
+            ? "Eingetragen." : "Hat nicht geklappt.";
+        },
+      });
+
+      T.push({
+        name: "projekt_anlegen",
+        description: "Legt eine Abgabe an, die über Wochen läuft — Seminararbeit, Projektabgabe. Ziele sind zählbare Dinge mit einer Zielzahl, etwa Text in Worten.",
+        inputSchema: { type: "object", properties: {
+          name: { type: "string" },
+          abgabe: { type: "string", description: "YYYY-MM-DD" },
+          fach: { type: "string", description: "exakter Name aus FÄCHER, optional" },
+          ziele: { type: "array", items: { type: "object", properties: {
+            name: { type: "string" }, ziel: { type: "number" }, einheit: { type: "string" },
+          }, required: ["name", "ziel"] } },
+          hinweise: { type: "array", items: { type: "string" }, description: "was am Ende leicht vergessen wird" },
+        }, required: ["name", "abgabe"] },
+        async execute({ name, abgabe, fach, ziele, hinweise }) {
+          jChip("projekt_anlegen");
+          if (!S.db) return "Der Speicher ist in dieser Ansicht nicht verfügbar.";
+          if (!/^\d{4}-\d{2}-\d{2}$/.test(String(abgabe))) return "abgabe muss YYYY-MM-DD sein.";
+          try {
+            await S.db.doc("projekte/" + neueId("p")).set({
+              name: String(name).slice(0, 140), abgabe: String(abgabe), fach: String(fach ?? "").trim() || null,
+              ziele: (Array.isArray(ziele) ? ziele : []).slice(0, 6).map((z) => ({
+                name: String(z?.name ?? "").slice(0, 60), einheit: String(z?.einheit ?? "").slice(0, 20) || null,
+                ziel: Math.max(0, Math.round(Number(z?.ziel) || 0)), stand: 0 })).filter((z) => z.name),
+              hinweise: (Array.isArray(hinweise) ? hinweise : []).slice(0, 8).map((h) => String(h).slice(0, 200)),
+              angelegt: new Date().toISOString(),
+            });
+            toast("Abgabe steht.");
+            return "Angelegt.";
+          } catch (e) { return "Speichern hat nicht geklappt."; }
         },
       });
 
@@ -2910,6 +3114,7 @@
     const d = (pfad, fn) => S.db.doc(pfad).onSnapshot((s) => { S.err.db = null; fn(s.exists ? s.data() : null); neuZeichnen(); }, aufFehler);
     d("cortex/zustand", (v) => (S.zustand = v));
     d("cortex/bericht", (v) => (S.bericht = v));
+    d("cortex/rueckblick", (v) => (S.rueckblick = v));
     d("cortex/tagesplan", (v) => (S.plan = v));
     d("cortex/tafel", (v) => (S.tafelStand = v || {}));
     d("cortex/vorlesungen", (v) => (S.vorlesungen = Array.isArray(v?.liste) ? v.liste : null));
@@ -2924,6 +3129,7 @@
     });
     S.db.collection("themen").onSnapshot((q) => { S.themen = q.docs.map((x) => ({ id: x.id, ...x.data() })); neuZeichnen(); }, aufFehler);
     S.db.collection("klausuren").onSnapshot((q) => { S.klausuren = q.docs.map((x) => ({ id: x.id, ...x.data() })); neuZeichnen(); }, aufFehler);
+    S.db.collection("projekte").onSnapshot((q) => { S.projekte = q.docs.map((x) => ({ id: x.id, ...x.data() })); neuZeichnen(); }, aufFehler);
     S.db.collection("vorschlaege").onSnapshot((q) => { S.vorschlaege = q.docs.map((x) => ({ id: x.id, ...x.data() })); neuZeichnen(); }, aufFehler);
     S.db.collection("agenten").onSnapshot((q) => { S.agenten = Object.fromEntries(q.docs.map((x) => [x.id, x.data()])); neuZeichnen(); }, aufFehler);
   }
