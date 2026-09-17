@@ -583,14 +583,17 @@
 
   // Vorlesungen aus dem Kalender. Links der Titel, wie er im Kalender steht, rechts die
   // Todoist-Sektion. fach: null heißt: als Vorlesung erkannt, Fach noch nicht zugeordnet.
+  // Das hier ist nur der Stand, mit dem die Seite startet — die gültige Zuordnung steht
+  // in cortex/vorlesungen und lässt sich ändern, ohne die Seite neu zu veröffentlichen.
   const VORLESUNGEN = [
     { titel: "Mathematische Grundlagen der Informatik", fach: "Mathematik (FOM)", kurz: "Mathe" },
+    { titel: "Konzepte der Programmierung", fach: "Programmierung (Java)", kurz: "Programmierung" },
+    { titel: "Wirtschaftsinformatik Basics", fach: "Wirtschaftsinformatik", kurz: "Wirtschaftsinformatik" },
     { titel: "Management Grundlagen", fach: "Management Basics", kurz: "Management" },
     { titel: "Zeit- und Selbstmanagement", fach: "ZSM", kurz: "ZSM" },
-    { titel: "Konzepte der Programmierung", fach: null, kurz: "Konzepte der Programmierung" },
-    { titel: "Wirtschaftsinformatik Basics", fach: null, kurz: "Wirtschaftsinformatik" },
   ];
-  const alsVorlesung = (titel) => VORLESUNGEN.find((v) => v.titel === titel) || null;
+  const vorlesungen = () => (Array.isArray(S.vorlesungen) && S.vorlesungen.length ? S.vorlesungen : VORLESUNGEN);
+  const alsVorlesung = (titel) => vorlesungen().find((v) => v.titel === titel) || null;
 
   // ---------------------------------------------------------------- Zeit
   const berlin = (d = new Date()) => {
@@ -642,7 +645,7 @@
   const S = {
     mcp: null, db: null, sample: null, caps: false,
     projektMeta: null, projekt: null, events: null,
-    zustand: null, bericht: null, themen: [], klausuren: [], vorschlaege: [], agenten: {}, journal: [],
+    zustand: null, bericht: null, themen: [], klausuren: [], vorlesungen: null, vorschlaege: [], agenten: {}, journal: [],
     plan: null, tafelStand: null,
     err: { todoist: null, kalender: null, db: null },
   };
@@ -2494,7 +2497,7 @@
   // Runde mit drei Werkzeugen aus wie eine Minute Stillstand.
   const WERKZEUG_WORT = { aufgaben_erledigen: "hakt ab", verschieben: "verschiebt", anlegen: "legt an",
     thema_wiederholt: "Gedächtnis", thema_anlegen: "merkt sich", klausur_anlegen: "Klausur",
-    tagesplan_setzen: "Tagesplan" };
+    vorlesung_zuordnen: "ordnet zu", tagesplan_setzen: "Tagesplan" };
   function jChip(name) {
     if (!jAktiv) return;
     let box = jAktiv.querySelector(".j-tools");
@@ -2694,6 +2697,30 @@
       });
 
       T.push({
+        name: "vorlesung_zuordnen",
+        description: "Ordnet einen Kalender-Vorlesungstitel einem Todoist-Fach zu. Danach hängen Vorlesung und Aufgaben zusammen. Der titel muss exakt so heißen wie im Kalender.",
+        inputSchema: { type: "object", properties: {
+          titel: { type: "string", description: "Titel der Vorlesung, exakt wie in TERMINE" },
+          fach: { type: "string", description: "exakter Name aus FÄCHER" },
+          kurz: { type: "string", description: "kurzer Anzeigename, optional" },
+        }, required: ["titel", "fach"] },
+        async execute({ titel, fach, kurz: k }) {
+          jChip("vorlesung_zuordnen");
+          if (!S.db) return "Der Speicher ist in dieser Ansicht nicht verfügbar.";
+          const t = String(titel ?? "").trim(), f = String(fach ?? "").trim();
+          if (!t || !f) return "Titel und Fach müssen beide da sein.";
+          if (!sektionen().some((s) => s.name === f)) return `„${f}“ ist keins der Fächer aus FÄCHER.`;
+          const liste = vorlesungen().filter((v) => v.titel !== t);
+          liste.push({ titel: t, fach: f, kurz: String(k ?? "").trim() || f });
+          try {
+            await S.db.doc("cortex/vorlesungen").set({ liste, stand: new Date().toISOString() });
+            toast(`${kurz(t, 28)} hängt jetzt an ${kurz(f, 24)}.`);
+            return "Zugeordnet.";
+          } catch (e) { return "Speichern hat nicht geklappt."; }
+        },
+      });
+
+      T.push({
         name: "tagesplan_setzen",
         description: "Setzt die drei Dinge für heute. Höchstens drei ids aus OFFENE AUFGABEN; eine leere Liste räumt den Plan.",
         inputSchema: { type: "object", properties: {
@@ -2885,6 +2912,7 @@
     d("cortex/bericht", (v) => (S.bericht = v));
     d("cortex/tagesplan", (v) => (S.plan = v));
     d("cortex/tafel", (v) => (S.tafelStand = v || {}));
+    d("cortex/vorlesungen", (v) => (S.vorlesungen = Array.isArray(v?.liste) ? v.liste : null));
     d("journal/intake", (v) => (S.journal = v?.eintraege || []));
     // Nur die erste Antwort zählt: sie stellt das Gespräch wieder her. Danach
     // schreibt der Chat selbst, und ein Echo darf ihn nicht überschreiben.
