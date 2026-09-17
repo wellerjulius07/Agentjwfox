@@ -1,0 +1,191 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<title>Jarvis</title>
+<meta http-equiv="Content-Security-Policy"
+  content="default-src 'none'; style-src 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; script-src 'unsafe-inline'">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Unbounded:wght@300;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400&display=swap">
+<style>
+  /* Same palette as the cortex - the two windows are one instrument. */
+  :root{
+    --void:#05060A; --shell:#0B0D14; --raise:#12141E;
+    --bone:#E9E3D6; --bone-2:#CFCABD; --mist:#8A90A6;
+    --synapse:#86C5FF; --alarm:#FF5A5F;
+    --line:rgba(233,227,214,.10); --line-2:rgba(233,227,214,.20);
+    --f-display:"Unbounded","Arial Black",system-ui,sans-serif;
+    --f-body:"IBM Plex Sans",system-ui,-apple-system,sans-serif;
+    --f-mono:"IBM Plex Mono",ui-monospace,Consolas,monospace;
+    color-scheme:dark;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%;margin:0}
+  body{background:var(--void);color:var(--bone);font-family:var(--f-body);font-size:15px;
+    line-height:1.5;display:flex;flex-direction:column}
+  :focus-visible{outline:2px solid var(--synapse);outline-offset:2px}
+
+  header{flex:none;display:flex;align-items:baseline;gap:12px;padding:14px 18px 10px;
+    border-bottom:1px solid var(--line);background:var(--void)}
+  header h1{font-family:var(--f-display);font-weight:300;font-size:17px;margin:0;letter-spacing:-.01em}
+  header h1 b{font-weight:700;color:var(--synapse)}
+  header .sp{flex:1}
+  header button{all:unset;cursor:pointer;font-family:var(--f-mono);font-size:10.5px;letter-spacing:.06em;
+    text-transform:uppercase;color:var(--mist);padding:5px 9px;border-radius:6px}
+  header button:hover{color:var(--bone);background:rgba(233,227,214,.06)}
+
+  #log{flex:1;overflow-y:auto;padding:16px 18px;display:flex;flex-direction:column;gap:14px}
+  .turn{display:flex;flex-direction:column;gap:5px;max-width:100%}
+  .turn .who{font-family:var(--f-mono);font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--mist)}
+  .turn .body{white-space:pre-wrap;overflow-wrap:anywhere;text-wrap:pretty}
+  .turn.du .body{background:var(--raise);border:1px solid var(--line);border-radius:10px;
+    padding:10px 13px;align-self:flex-start}
+  .turn.jarvis .body{color:var(--bone)}
+  .turn.fehler .body{color:#FFC4C6}
+
+  .tools{display:flex;flex-wrap:wrap;gap:5px}
+  .tool{font-family:var(--f-mono);font-size:10px;color:var(--mist);border:1px solid var(--line);
+    border-radius:10px;padding:1px 8px;line-height:17px}
+
+  .denkt{display:flex;align-items:center;gap:9px;color:var(--mist);font-family:var(--f-mono);font-size:12px}
+  .spark{width:8px;height:8px;border-radius:50%;background:var(--synapse);
+    box-shadow:0 0 12px var(--synapse);animation:spark 1s ease-in-out infinite}
+  @keyframes spark{50%{transform:scale(.5);opacity:.5}}
+  @media (prefers-reduced-motion:reduce){.spark{animation:none}}
+
+  .leer{margin:auto;text-align:center;color:var(--mist);max-width:300px}
+  .leer p{margin:0 0 6px}
+  .leer code{font-family:var(--f-mono);font-size:12px;color:var(--bone-2)}
+
+  form{flex:none;display:flex;align-items:flex-end;gap:7px;padding:10px 12px 12px;
+    border-top:1px solid var(--line)}
+  textarea{flex:1;resize:none;background:var(--shell);border:1px solid rgba(134,197,255,.30);
+    border-radius:14px;color:var(--bone);font:inherit;padding:11px 14px;max-height:180px;outline:0}
+  textarea:focus{border-color:rgba(134,197,255,.7);box-shadow:0 0 26px rgba(134,197,255,.15)}
+  textarea::placeholder{color:var(--mist)}
+  form button{all:unset;cursor:pointer;width:38px;height:38px;flex:none;border-radius:50%;
+    display:grid;place-items:center;background:var(--synapse);color:var(--void);font-size:17px;font-weight:700}
+  form button:hover{background:#A3D3FF}
+  form button.stop{background:var(--alarm);color:var(--bone)}
+</style>
+</head>
+<body>
+  <header>
+    <h1>Jar<b>vis</b></h1>
+    <div class="sp"></div>
+    <button type="button" id="brain">Cortex</button>
+    <button type="button" id="neu">Neu</button>
+  </header>
+
+  <div id="log">
+    <div class="leer" id="leer">
+      <p>Frag mich etwas, oder sag mir, was zu tun ist.</p>
+      <p><code>Strg+Shift+J</code> holt mich von überall.</p>
+    </div>
+  </div>
+
+  <form id="form">
+    <textarea id="feld" rows="1" placeholder="Was liegt an?" enterkeyhint="send"></textarea>
+    <button type="submit" id="senden" aria-label="Senden">↑</button>
+  </form>
+
+<script>
+(() => {
+  "use strict";
+  const $ = (s) => document.querySelector(s);
+  const log = $("#log"), feld = $("#feld"), form = $("#form"), senden = $("#senden");
+  let laeuft = false;
+
+  const unten = () => { log.scrollTop = log.scrollHeight; };
+
+  function turn(rolle, klasse) {
+    $("#leer")?.remove();
+    const el = document.createElement("div");
+    el.className = `turn ${klasse}`;
+    el.innerHTML = `<div class="who"></div><div class="body"></div>`;
+    el.querySelector(".who").textContent = rolle;
+    log.append(el);
+    unten();
+    return el;
+  }
+
+  // textContent everywhere: nothing the model or a tool returns is ever parsed as HTML.
+  function setzen(el, text) { el.querySelector(".body").textContent = text; unten(); }
+
+  function werkzeug(el, name) {
+    let box = el.querySelector(".tools");
+    if (!box) {
+      box = document.createElement("div");
+      box.className = "tools";
+      el.append(box);
+    }
+    const chip = document.createElement("span");
+    chip.className = "tool";
+    chip.textContent = name.replace(/^mcp__cortex__/, "");
+    box.append(chip);
+    unten();
+  }
+
+  async function fragen(text) {
+    laeuft = true;
+    senden.textContent = "■";
+    senden.classList.add("stop");
+    senden.setAttribute("aria-label", "Stopp");
+
+    turn("Du", "du").querySelector(".body").textContent = text;
+
+    const el = turn("Jarvis", "jarvis");
+    const body = el.querySelector(".body");
+    body.innerHTML = `<span class="denkt"><span class="spark"></span>Denkt nach …</span>`;
+
+    let antwort = "";
+    await window.jarvis.ask(text, (msg) => {
+      if (msg.kind === "text") {
+        antwort += msg.text;
+        setzen(el, antwort);
+      } else if (msg.kind === "tool") {
+        werkzeug(el, msg.name);
+      } else if (msg.kind === "error") {
+        el.className = "turn fehler";
+        setzen(el, msg.message || "Da ist etwas schiefgegangen.");
+      } else if (msg.kind === "end") {
+        if (!antwort && !el.querySelector(".tools")) setzen(el, "(keine Antwort)");
+        laeuft = false;
+        senden.textContent = "↑";
+        senden.classList.remove("stop");
+        senden.setAttribute("aria-label", "Senden");
+      }
+    });
+  }
+
+  form.addEventListener("submit", (ev) => {
+    ev.preventDefault();
+    if (laeuft) return window.jarvis.interrupt();
+    const text = feld.value.trim();
+    if (!text) return;
+    feld.value = "";
+    feld.style.height = "auto";
+    fragen(text);
+  });
+
+  // Enter sends, Shift+Enter breaks the line.
+  feld.addEventListener("keydown", (ev) => {
+    if (ev.key === "Enter" && !ev.shiftKey) { ev.preventDefault(); form.requestSubmit(); }
+  });
+  feld.addEventListener("input", () => {
+    feld.style.height = "auto";
+    feld.style.height = Math.min(feld.scrollHeight, 180) + "px";
+  });
+
+  $("#brain").addEventListener("click", () => window.jarvis.openBrain());
+  $("#neu").addEventListener("click", () => {
+    window.jarvis.reset();
+    log.innerHTML = `<div class="leer" id="leer"><p>Neues Gespräch.</p></div>`;
+  });
+
+  feld.focus();
+})();
+</script>
+</body>
+</html>

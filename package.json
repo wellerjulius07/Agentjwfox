@@ -1,0 +1,20 @@
+{
+  "name": "jarvis",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Personal cockpit: Jarvis chat window with the Semester-Cortex brain built in.",
+  "main": "src/main/index.js",
+  "type": "commonjs",
+  "scripts": {
+    "start": "electron .",
+    "dev": "electron . --dev"
+  },
+  "dependencies": {
+    "@anthropic-ai/claude-agent-sdk": "^0.1.0",
+    "@anthropic-ai/sdk": "^0.70.0",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "electron": "^33.0.0"
+  }
+}

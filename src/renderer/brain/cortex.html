@@ -1,0 +1,2452 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#faf9f5;color:#141413}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Semester-Cortex</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Unbounded:wght@300;500;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+  /* Semester-Cortex — ein dunkles Instrument. Bewusst einthemig:
+     die Seite malt Grund und Farben selbst und hält auf jedem Host-Grund. */
+  :root{
+    --void:#05060A; --shell:#0B0D14; --raise:#12141E;
+    --bone:#E9E3D6; --bone-2:#CFCABD; --mist:#8A90A6; --faint:#4F5569;
+    --synapse:#86C5FF; --alarm:#FF5A5F; --soon:#F5C04A; --ok:#8FE3B0;
+    --line:rgba(233,227,214,.10); --line-2:rgba(233,227,214,.20); --hover:rgba(233,227,214,.06);
+    --glass:rgba(9,11,18,.84);
+    --f-display:"Unbounded","Arial Black",system-ui,sans-serif;
+    --f-body:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+    --f-mono:"IBM Plex Mono",ui-monospace,Consolas,monospace;
+    --r:10px;
+    color-scheme:dark;
+  }
+  *{box-sizing:border-box}
+  html{height:100%}
+  body{height:100%;margin:0;background:var(--void);color:var(--bone);
+    font-family:var(--f-body);font-size:15px;line-height:1.5;-webkit-text-size-adjust:100%}
+  button{font:inherit;color:inherit}
+  h1,h2,h3,h4{text-wrap:balance}
+  :focus-visible{outline:2px solid var(--synapse);outline-offset:2px}
+
+  /* ---------- Gerüst ---------- */
+  #canvasLayer{position:fixed;inset:0;z-index:0}
+  #canvasLayer[hidden]{display:none!important}
+  #stage{display:block;width:100%;height:100%;cursor:grab;touch-action:none}
+  #stage.dragging{cursor:grabbing}
+  #stage.hovering{cursor:pointer}
+  .vignette{position:fixed;inset:0;pointer-events:none;z-index:1;
+    background:radial-gradient(ellipse 72% 62% at 50% 46%,transparent 42%,rgba(5,6,10,.9) 100%)}
+  #labels{position:fixed;inset:0;pointer-events:none;overflow:hidden;z-index:2}
+  .lbl{position:absolute;left:0;top:0;white-space:nowrap;font-family:var(--f-mono);font-size:10.5px;
+    color:var(--bone);padding:2px 6px;border-radius:3px;background:rgba(5,6,10,.72);
+    border:1px solid var(--line);opacity:0;transition:opacity .2s}
+  .lbl.on{opacity:1}
+  .lbl.back{opacity:.4}
+  .lbl.major{font-family:var(--f-body);font-weight:600;font-size:11.5px}
+  .lbl.alarm{color:#FFD2D3;border-color:rgba(255,90,95,.5)}
+  .lbl.sel{border-color:var(--c,var(--synapse))}
+  .canvasfail{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);z-index:3;
+    width:min(400px,calc(100% - 32px));padding:20px;border-radius:var(--r);
+    background:var(--shell);border:1px solid var(--line-2);text-align:center}
+  .canvasfail p{margin:0 0 14px;color:var(--bone-2);font-size:13.5px}
+
+  #shell{position:relative;z-index:4;min-height:100%;display:flex;flex-direction:column;
+    pointer-events:none}
+  #shell > *{pointer-events:auto}
+  body[data-blick="puls"]{overflow-y:auto}
+  body:not([data-blick="puls"]){overflow:hidden}
+
+  /* ---------- Kopf ---------- */
+  .top{position:sticky;top:env(safe-area-inset-top,0px);z-index:6;
+    background:linear-gradient(var(--void) 62%,rgba(5,6,10,0));
+    padding:14px 16px 12px}
+  .top-in{max-width:620px;margin:0 auto;display:flex;flex-direction:column;gap:10px}
+  .brand{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap}
+  .brand h1{font-family:var(--f-display);font-weight:300;font-size:19px;letter-spacing:-.01em;margin:0}
+  .brand h1 b{font-weight:700;color:var(--synapse)}
+  .brand time{font-family:var(--f-mono);font-size:10.5px;color:var(--mist);letter-spacing:.04em}
+
+  .ask{display:flex;align-items:center;gap:6px;padding:5px 5px 5px 16px;border-radius:26px;
+    background:var(--glass);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
+    border:1px solid rgba(134,197,255,.34);box-shadow:0 0 30px rgba(134,197,255,.10)}
+  .ask:focus-within{border-color:rgba(134,197,255,.7);box-shadow:0 0 34px rgba(134,197,255,.2)}
+  .ask input{flex:1;min-width:0;background:none;border:0;outline:0;color:var(--bone);font:inherit;padding:9px 0}
+  .ask input::placeholder{color:var(--mist)}
+  .ask button{all:unset;cursor:pointer;width:38px;height:38px;border-radius:50%;display:grid;
+    place-items:center;background:var(--synapse);color:var(--void);font-size:17px;font-weight:700;flex:none}
+  .ask button:hover{background:#A3D3FF}
+  .ask button:focus-visible{outline:2px solid var(--bone);outline-offset:2px}
+
+  .blicke{display:flex;gap:2px;padding:3px;border-radius:22px;background:var(--shell);
+    border:1px solid var(--line);align-self:flex-start}
+  .blicke button{all:unset;cursor:pointer;padding:6px 15px;border-radius:18px;font-size:12.5px;
+    color:var(--mist);transition:background .15s,color .15s}
+  .blicke button:hover{color:var(--bone)}
+  .blicke button[aria-selected="true"]{background:var(--raise);color:var(--bone)}
+  .blicke button:focus-visible{outline:2px solid var(--synapse);outline-offset:1px}
+
+  .status{display:flex;flex-wrap:wrap;gap:3px 14px;font-family:var(--f-mono);font-size:10.5px;color:var(--mist)}
+  .status span{display:inline-flex;align-items:center;gap:6px}
+  .status i{width:5px;height:5px;border-radius:50%;background:var(--c);flex:none}
+  .status .ok{--c:var(--ok)} .status .wait{--c:var(--mist)}
+  .status .alarm{--c:var(--alarm);color:#FFC4C6} .status .muted{--c:var(--faint)}
+
+  /* ---------- Puls ---------- */
+  #puls{flex:1;padding:4px 16px calc(40px + env(safe-area-inset-bottom,0px))}
+  #puls[hidden]{display:none!important}
+  .spalten{max-width:620px;margin:0 auto;display:flex;flex-direction:column;gap:22px}
+  .sekt{display:flex;flex-direction:column;gap:9px}
+  .sekt > h2{margin:0;font-family:var(--f-mono);font-weight:400;font-size:10.5px;letter-spacing:.09em;
+    text-transform:uppercase;color:var(--mist);display:flex;align-items:baseline;gap:8px}
+  .sekt > h2 em{font-style:normal;color:var(--faint);letter-spacing:.04em;text-transform:none}
+  .leer{margin:0;font-size:13px;color:var(--mist)}
+
+  /* Zeile: der Grundbaustein. Aktionen sind immer sichtbar, nie hinter einem Panel. */
+  .z{display:grid;grid-template-columns:8px 1fr auto;gap:3px 11px;align-items:start;
+    padding:11px 13px;border-radius:var(--r);background:var(--shell);border:1px solid var(--line)}
+  .z.wichtig{border-color:rgba(255,90,95,.3)}
+  .z > i{width:8px;height:8px;border-radius:50%;background:var(--c,var(--mist));margin-top:5px}
+  .z-t{font-size:14px;line-height:1.35;overflow-wrap:anywhere}
+  .z-t button{all:unset;cursor:pointer;text-align:left}
+  .z-t button:hover{color:var(--synapse)}
+  .z-t button:focus-visible{outline:2px solid var(--synapse);outline-offset:2px;border-radius:2px}
+  .z-r{font-family:var(--f-mono);font-size:10.5px;color:var(--mist);white-space:nowrap;padding-top:2px;
+    font-variant-numeric:tabular-nums}
+  .z-m{grid-column:2/4;font-family:var(--f-mono);font-size:10.5px;color:var(--mist);line-height:1.35;
+    overflow-wrap:anywhere}
+  .z-a{grid-column:2/4;display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+  .z.alarm{--c:var(--alarm)} .z.alarm .z-r{color:#FF9A9D}
+  .z.soon{--c:var(--soon)} .z.soon .z-r{color:var(--soon)}
+  .z.ruhig{--c:var(--synapse)}
+  .z.satt{--c:var(--ok)}
+
+  .btn{all:unset;box-sizing:border-box;cursor:pointer;display:inline-flex;align-items:center;gap:7px;
+    min-height:34px;padding:0 13px;border-radius:18px;border:1px solid var(--line-2);font-size:12.5px;
+    line-height:1;transition:background .15s,border-color .15s}
+  .btn:hover{background:var(--hover);border-color:rgba(233,227,214,.34)}
+  .btn.primary{background:var(--synapse);border-color:var(--synapse);color:var(--void);font-weight:600}
+  .btn.primary:hover{background:#A3D3FF}
+  .btn.still{border-color:transparent;color:var(--mist);padding:0 9px}
+  .btn.still:hover{color:var(--bone)}
+  .btn[disabled]{opacity:.5;cursor:default}
+  .btn.mini{min-height:28px;font-size:12px;padding:0 11px}
+
+  .pill{display:inline-block;padding:0 8px;border-radius:10px;font-family:var(--f-mono);font-size:10px;
+    line-height:18px;border:1px solid currentColor;white-space:nowrap}
+  .pill.ok{color:var(--ok)} .pill.open{color:var(--soon)} .pill.alarm{color:var(--alarm)}
+  .pill.info{color:var(--synapse)} .pill.muted{color:var(--mist)}
+
+  /* Drei für heute */
+  .plan{display:flex;flex-direction:column;gap:7px}
+  .slot{display:grid;grid-template-columns:20px 1fr auto;gap:11px;align-items:center;
+    padding:11px 13px;border-radius:var(--r);background:var(--shell);border:1px solid var(--line)}
+  .slot.frei{border-style:dashed;border-color:var(--line-2);background:none}
+  .slot .n{font-family:var(--f-mono);font-size:11px;color:var(--faint);font-variant-numeric:tabular-nums}
+  .slot .t{font-size:14px;line-height:1.3;overflow-wrap:anywhere}
+  .slot.frei .t{color:var(--mist);font-size:13px}
+  .slot.fertig .t{color:var(--mist);text-decoration:line-through}
+  .waehler{display:flex;flex-direction:column;gap:5px}
+  .waehler button{all:unset;cursor:pointer;display:grid;grid-template-columns:1fr auto;gap:10px;
+    align-items:center;padding:9px 12px;border-radius:8px;border:1px solid var(--line);font-size:13.5px}
+  .waehler button:hover{border-color:var(--line-2);background:var(--hover)}
+  .waehler button small{font-family:var(--f-mono);font-size:10.5px;color:var(--mist)}
+
+  /* Balken (Wiederholen, Speicher) */
+  .bar{height:4px;border-radius:2px;background:rgba(233,227,214,.09);overflow:hidden;margin-top:5px}
+  .bar b{display:block;height:100%;background:var(--c,var(--synapse));border-radius:2px}
+
+  /* ---------- Antwort des Eingabefelds ---------- */
+  #antwort{max-width:620px;margin:0 auto 6px;padding:14px 16px;border-radius:var(--r);
+    background:var(--shell);border:1px solid rgba(134,197,255,.28);position:relative;
+    display:flex;flex-direction:column;gap:12px}
+  #antwort[hidden]{display:none!important}
+  #antwort p{margin:0;padding-right:26px;color:var(--bone);text-wrap:pretty}
+  #antwort p.lead{color:var(--bone-2);font-size:13.5px}
+  .denkt{display:flex;align-items:center;gap:10px;color:var(--mist);font-family:var(--f-mono);font-size:12px}
+  .spark{width:8px;height:8px;border-radius:50%;background:var(--synapse);
+    box-shadow:0 0 12px var(--synapse);animation:spark 1s ease-in-out infinite}
+  @keyframes spark{50%{transform:scale(.5);opacity:.5}}
+  .refs{display:flex;flex-wrap:wrap;gap:6px}
+  .ref{all:unset;cursor:pointer;display:inline-flex;align-items:center;gap:6px;padding:4px 11px 4px 9px;
+    border-radius:14px;border:1px solid var(--line-2);font-size:12px}
+  .ref:hover{border-color:var(--c,var(--synapse))}
+  .ref i{width:6px;height:6px;border-radius:50%;background:var(--c,var(--synapse))}
+  .x{all:unset;position:absolute;top:8px;right:8px;width:28px;height:28px;display:grid;place-items:center;
+    border-radius:5px;cursor:pointer;color:var(--mist);font-size:18px;line-height:1}
+  .x:hover{background:var(--hover);color:var(--bone)}
+  .felder{display:grid;grid-template-columns:1fr;gap:8px}
+  .feld{display:flex;flex-direction:column;gap:4px}
+  .feld label{font-family:var(--f-mono);font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--mist)}
+  .feld input,.feld select{background:var(--raise);border:1px solid var(--line);border-radius:7px;
+    color:var(--bone);font:inherit;font-size:13.5px;padding:8px 10px;min-width:0}
+  .feld-reihe{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  .vorschlaege{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:2px}
+  .vorschlaege label{display:grid;grid-template-columns:18px auto 1fr;align-items:baseline;gap:2px 10px;
+    padding:8px;margin:0 -8px;border-radius:7px;cursor:pointer}
+  .vorschlaege label:hover{background:var(--hover)}
+  .vorschlaege input{margin:0;accent-color:var(--synapse);align-self:center}
+  .v-art{font-family:var(--f-mono);font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--c)}
+  .v-art.termin{--c:#6FD6C4} .v-art.aufgabe{--c:#C7A8F5}
+  .v-m{grid-column:3;font-family:var(--f-mono);font-size:10.5px;color:var(--mist)}
+  .v-h{display:block;margin:0 0 4px 28px;font-style:normal;font-size:11.5px;color:var(--soon)}
+  .ergebnis{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:4px;font-size:13px}
+  .ergebnis li{display:grid;grid-template-columns:16px 1fr;gap:8px}
+  .ergebnis .ja{color:var(--ok)} .ergebnis .nein{color:var(--alarm)}
+
+  /* ---------- Erinnerungstafel ---------- */
+  #tafel{position:fixed;inset:0;z-index:20;display:grid;place-items:center;padding:16px;
+    background:rgba(5,6,10,.72);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)}
+  #tafel[hidden]{display:none!important}
+  .tafel-karte{width:min(440px,100%);max-height:calc(100% - 32px);overflow:auto;
+    background:var(--shell);border:1px solid var(--line-2);border-radius:14px;
+    padding:20px 20px calc(16px + env(safe-area-inset-bottom,0px));
+    display:flex;flex-direction:column;gap:16px;
+    box-shadow:0 20px 60px rgba(0,0,0,.6);animation:auf .26s ease-out}
+  @keyframes auf{from{opacity:0;transform:translateY(12px)}}
+  .tafel-kopf h2{font-family:var(--f-display);font-weight:500;font-size:19px;line-height:1.3;margin:0}
+  .tafel-kopf p{margin:5px 0 0;font-size:13px;color:var(--mist)}
+  .karten{display:flex;flex-direction:column;gap:10px}
+  .karte{display:flex;flex-direction:column;gap:9px;padding:13px;border-radius:var(--r);
+    background:var(--raise);border:1px solid var(--line)}
+  .karte.alarm{border-color:rgba(255,90,95,.32)}
+  .karte h3{margin:0;font-size:14.5px;font-weight:600;line-height:1.35}
+  .karte .wann{font-family:var(--f-mono);font-size:10.5px;color:var(--mist)}
+  .karte.alarm .wann{color:#FF9A9D}
+  .karte .aus{display:flex;flex-wrap:wrap;gap:6px}
+  .tafel-fuss{display:flex;flex-wrap:wrap;gap:8px;align-items:center;
+    padding-top:12px;border-top:1px solid var(--line)}
+  .tafel-fuss .weg{margin-left:auto}
+  .spaeter{display:flex;flex-wrap:wrap;gap:6px;padding:10px;border-radius:8px;
+    background:rgba(134,197,255,.07);border:1px solid rgba(134,197,255,.2)}
+  .spaeter-kopf{width:100%;font-family:var(--f-mono);font-size:10px;letter-spacing:.06em;
+    text-transform:uppercase;color:var(--mist)}
+
+  /* ---------- Detailblatt (Bottom Sheet) ---------- */
+  #blatt{position:fixed;left:0;right:0;bottom:0;z-index:14;max-height:74vh;
+    background:var(--glass);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);
+    border-top:1px solid var(--line-2);border-radius:14px 14px 0 0;
+    display:flex;flex-direction:column;animation:hoch .24s ease-out}
+  #blatt[hidden]{display:none!important}
+  @keyframes hoch{from{transform:translateY(24px);opacity:0}}
+  .griff{flex:none;display:grid;place-items:center;padding:9px 0 3px;cursor:grab}
+  .griff span{width:38px;height:4px;border-radius:2px;background:var(--line-2)}
+  #blattBody{overflow:auto;padding:6px 18px calc(20px + env(safe-area-inset-bottom,0px));
+    display:flex;flex-direction:column;gap:14px;max-width:620px;margin:0 auto;width:100%}
+  #blattBody h3{font-family:var(--f-display);font-weight:500;font-size:17px;line-height:1.3;margin:0}
+  #blattBody p{margin:0;color:var(--bone-2);font-size:13.5px;text-wrap:pretty;overflow-wrap:anywhere}
+  #blattBody h4{margin:0 0 6px;font-family:var(--f-mono);font-weight:400;font-size:10.5px;
+    letter-spacing:.08em;text-transform:uppercase;color:var(--mist)}
+  .organ-marke{display:inline-flex;align-items:center;gap:7px;font-family:var(--f-mono);font-size:10.5px;
+    color:var(--mist);padding-right:30px}
+  .organ-marke i{width:7px;height:7px;border-radius:50%;background:var(--c);box-shadow:0 0 8px var(--c)}
+  .fakten{display:grid;grid-template-columns:auto 1fr;gap:5px 14px;margin:0;font-size:13px}
+  .fakten dt{font-family:var(--f-mono);font-size:11px;color:var(--mist);padding-top:1px}
+  .fakten dd{margin:0;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+  .liste{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}
+  .block{display:flex;flex-direction:column}
+  .karte-v{display:flex;flex-direction:column;gap:6px;padding:12px 0;border-top:1px solid var(--line)}
+  .karte-v:first-of-type{border-top:0}
+  .karte-v h5{margin:0;font-size:13.5px;font-weight:600;line-height:1.35}
+  .karte-v p{font-size:13px}
+  .karte-v p b{font-family:var(--f-mono);font-weight:500;font-size:10px;letter-spacing:.05em;
+    text-transform:uppercase;color:var(--mist);margin-right:5px}
+  .karte-v .meta{display:flex;flex-wrap:wrap;gap:5px}
+  .karte-v.erledigt{opacity:.55}
+
+  /* ---------- Organ-Navigation (ersetzt die alte Legende) ---------- */
+  #organe{display:flex;flex-direction:column;gap:1px;max-width:620px;margin:0 auto;width:100%;
+    padding:2px 16px calc(24px + env(safe-area-inset-bottom,0px))}
+  #organe[hidden]{display:none!important}
+  body:not([data-blick="puls"]) #organe{max-height:44vh;overflow-y:auto}
+  #organe h2{margin:0 0 6px;font-family:var(--f-mono);font-weight:400;font-size:10.5px;
+    letter-spacing:.09em;text-transform:uppercase;color:var(--mist)}
+  .organ{all:unset;box-sizing:border-box;display:grid;grid-template-columns:10px 1fr auto;
+    align-items:center;gap:11px;min-height:44px;padding:5px 9px;margin:0 -9px;border-radius:7px;
+    cursor:pointer;font-size:13.5px}
+  .organ:hover{background:var(--hover)}
+  .organ i{width:8px;height:8px;border-radius:50%;background:var(--c);box-shadow:0 0 9px var(--c)}
+  .organ em{font-style:normal;color:var(--mist);font-size:11px;display:block;line-height:1.2}
+  .organ small{font-family:var(--f-mono);color:var(--mist);font-size:10.5px;font-variant-numeric:tabular-nums}
+  .organ.warn small{color:#FF9A9D}
+
+  /* ---------- Toast mit Rückgängig ---------- */
+  #toast{position:fixed;left:50%;transform:translateX(-50%);
+    bottom:calc(18px + env(safe-area-inset-bottom,0px));z-index:30;
+    display:flex;align-items:center;gap:12px;max-width:min(460px,calc(100% - 32px));
+    padding:10px 10px 10px 16px;border-radius:24px;background:var(--raise);
+    border:1px solid var(--line-2);box-shadow:0 12px 34px rgba(0,0,0,.5);font-size:13px}
+  #toast[hidden]{display:none!important}
+  #toast span{overflow-wrap:anywhere}
+
+  /* ---------- Desktop ---------- */
+  @media (min-width:980px){
+    body{font-size:15px}
+    .top{padding:18px 24px 14px}
+    .top-in,#puls .spalten,#blattBody,#organe{max-width:1080px}
+    .top-in{display:grid;grid-template-columns:1fr auto;grid-template-areas:"brand blicke" "ask ask" "status status";
+      gap:10px 18px;align-items:center}
+    .brand{grid-area:brand} .blicke{grid-area:blicke;justify-self:end} 
+    .ask{grid-area:ask;max-width:620px} .status{grid-area:status}
+    #puls{padding:4px 24px 48px}
+    #puls .spalten{display:grid;grid-template-columns:1fr 1fr;gap:26px 30px;align-items:start}
+    #puls .spalten > .weit{grid-column:1/-1}
+    #antwort{max-width:1080px}
+    #blatt{left:auto;right:24px;bottom:24px;width:390px;max-height:72vh;border-radius:14px;
+      border:1px solid var(--line-2)}
+    #organe{position:fixed;left:24px;bottom:24px;width:250px;padding:0;z-index:5}
+    body:not([data-blick="puls"]) #organe{max-height:calc(100vh - 230px)}
+    .griff{display:none}
+  }
+
+  @media (prefers-reduced-motion:reduce){
+    .spark{animation:none}
+    .tafel-karte,#blatt{animation:none}
+  }
+</style>
+
+<div id="canvasLayer" hidden>
+  <canvas id="stage" aria-label="Räumliche Ansicht des Cortex"></canvas>
+  <div class="vignette"></div>
+  <div id="labels"></div>
+</div>
+
+<div id="shell">
+  <header class="top">
+    <div class="top-in">
+      <div class="brand">
+        <h1>Semester-<b>Cortex</b></h1>
+        <time id="heute"></time>
+      </div>
+
+      <div class="blicke" role="tablist" aria-label="Blick wählen">
+        <button type="button" role="tab" id="tabPuls" aria-selected="true" data-blick="puls">Puls</button>
+        <button type="button" role="tab" id="tabBahn" aria-selected="false" data-blick="bahn">Bahn</button>
+        <button type="button" role="tab" id="tabGehirn" aria-selected="false" data-blick="gehirn">Gehirn</button>
+      </div>
+
+      <form id="ask" class="ask" autocomplete="off">
+        <input id="askInput" name="q" enterkeyhint="send"
+          placeholder="Zahnarzt Fr 14 · Übungsblatt Do · oder eine Frage"
+          aria-label="Eintragen oder fragen">
+        <button type="submit" aria-label="Absenden">↑</button>
+      </form>
+
+      <div id="status" class="status" aria-live="polite"><span class="wait"><i></i>Verbinde …</span></div>
+    </div>
+  </header>
+
+  <div id="antwort" hidden aria-live="polite"></div>
+
+  <main id="puls">
+    <div class="spalten" id="pulsSpalten"></div>
+  </main>
+
+  <nav id="organe" hidden aria-label="Organe"></nav>
+</div>
+
+<aside id="blatt" hidden aria-live="polite">
+  <div class="griff" aria-hidden="true"><span></span></div>
+  <div id="blattBody"></div>
+</aside>
+
+<div id="tafel" hidden role="dialog" aria-modal="true" aria-labelledby="tafelTitel">
+  <div class="tafel-karte" id="tafelKarte"></div>
+</div>
+
+<div id="toast" hidden role="status"></div>
+
+<script>
+(() => {
+  "use strict";
+  const $ = (s) => document.querySelector(s);
+  const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  const ruhig = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const schmal = () => innerWidth < 980;
+  const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+
+  // ---------------------------------------------------------------- Konfiguration
+  const TZ = "Europe/Berlin";
+  const PROJEKT = /studium/i;                              // Todoist-Projekt
+  const SEKTIONEN_AUS = ["Routinen 🔁", "Inspiration ✨"];  // Todoist-Onboarding, explizit statt Regex
+  const TAFEL_ZEITEN = ["08:30", "20:00"];                 // je einmal am Tag, wenn die Seite offen ist
+  const TAFEL_PAUSE_MIN = 30;                              // frühestens so viel später wieder beim Öffnen
+  const TAFEL_MAX = 3;                                     // niemals mehr Karten
+  const PLAN_MAX = 3;                                      // „Drei für heute“
+  const INTERVALLE = [1, 3, 7, 16, 35];                    // Wiederholungs-Queue, in Tagen
+  const TAG_VON = 8, TAG_BIS = 22;                         // Fenster für „Einplanen“
+  const BAHN_TAGE = 14;
+  const LABELS_ERLAUBT = ["abgabe", "lernen", "orga", "wartet-auf"];
+
+  // Vorlesungen aus dem Kalender. Links der Titel, wie er im Kalender steht, rechts die
+  // Todoist-Sektion. fach: null heißt: als Vorlesung erkannt, Fach noch nicht zugeordnet.
+  const VORLESUNGEN = [
+    { titel: "Mathematische Grundlagen der Informatik", fach: "Mathematik (FOM)", kurz: "Mathe" },
+    { titel: "Management Grundlagen", fach: "Management Basics", kurz: "Management" },
+    { titel: "Zeit- und Selbstmanagement", fach: "ZSM", kurz: "ZSM" },
+    { titel: "Konzepte der Programmierung", fach: null, kurz: "Konzepte der Programmierung" },
+    { titel: "Wirtschaftsinformatik Basics", fach: null, kurz: "Wirtschaftsinformatik" },
+  ];
+  const alsVorlesung = (titel) => VORLESUNGEN.find((v) => v.titel === titel) || null;
+
+  // ---------------------------------------------------------------- Zeit
+  const berlin = (d = new Date()) => {
+    const p = Object.fromEntries(new Intl.DateTimeFormat("en-CA", { timeZone: TZ, year: "numeric", month: "2-digit",
+      day: "2-digit", hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).formatToParts(d).map((x) => [x.type, x.value]));
+    return { date: `${p.year}-${p.month}-${p.day}`, time: `${p.hour}:${p.minute}` };
+  };
+  const tagNr = (iso) => Date.UTC(+iso.slice(0, 4), +iso.slice(5, 7) - 1, +iso.slice(8, 10)) / 864e5;
+  const heute = () => berlin().date;
+  const tageBis = (iso) => tagNr(iso) - tagNr(heute());
+  const isoTag = (n) => new Date(n * 864e5).toISOString().slice(0, 10);
+  const kurzDatum = (iso) => new Intl.DateTimeFormat("de-DE", { weekday: "short", day: "numeric", month: "short", timeZone: "UTC" })
+    .format(new Date(tagNr(iso) * 864e5));
+  const stempel = (iso) => new Intl.DateTimeFormat("de-DE", { day: "2-digit", month: "2-digit", hour: "2-digit",
+    minute: "2-digit", timeZone: TZ }).format(new Date(iso));
+  const rel = (d) => d < -1 ? `seit ${-d} Tagen überfällig` : d === -1 ? "seit gestern überfällig"
+    : d === 0 ? "heute" : d === 1 ? "morgen" : d < 14 ? `in ${d} Tagen` : `in ${Math.round(d / 7)} Wochen`;
+  const vorTagen = (iso) => { const d = -tageBis(berlin(new Date(iso)).date); return d <= 0 ? "heute" : d === 1 ? "gestern" : `vor ${d} Tagen`; };
+  // Zeitzonen-Offset für ein konkretes Datum — Sommer-/Winterzeit inbegriffen.
+  const offsetFuer = (datum) => {
+    const probe = new Date(Date.UTC(+datum.slice(0, 4), +datum.slice(5, 7) - 1, +datum.slice(8, 10), 12));
+    const b = berlin(probe);
+    const min = Math.round((Date.UTC(+b.date.slice(0, 4), +b.date.slice(5, 7) - 1, +b.date.slice(8, 10),
+      +b.time.slice(0, 2), +b.time.slice(3, 5)) - probe.getTime()) / 6e4);
+    const a = Math.abs(min);
+    return `${min >= 0 ? "+" : "-"}${String(Math.floor(a / 60)).padStart(2, "0")}:${String(a % 60).padStart(2, "0")}`;
+  };
+  const minuten = (hhmm) => +hhmm.slice(0, 2) * 60 + +hhmm.slice(3, 5);
+  const alsUhr = (min) => `${String(Math.floor(min / 60) % 24).padStart(2, "0")}:${String(min % 60).padStart(2, "0")}`;
+  const naechsterWochentag = (ziel) => {           // 6 = Samstag, 1 = Montag
+    const d = new Date(tagNr(heute()) * 864e5);
+    let n = tagNr(heute());
+    for (let i = 1; i <= 7; i++) if (new Date((n + i) * 864e5).getUTCDay() === ziel) return isoTag(n + i);
+    return isoTag(n + 1);
+  };
+  const istWochenende = (iso) => [0, 6].includes(new Date(tagNr(iso) * 864e5).getUTCDay());
+
+  const kurz = (s, n) => (String(s).length > n ? String(s).slice(0, n - 1).trimEnd() + "…" : String(s));
+  const schlicht = (s) => String(s ?? "").replace(/\[([^\]]+)\]\([^)]+\)/g, "$1").replace(/[*_`]/g, "");
+  const ohnePrefix = (s) => s.replace(/^[^:]{2,20}:\s*/, "");
+  const zahl = (n) => new Intl.NumberFormat("de-DE").format(n || 0);
+  const streu = (s) => { let h = 2166136261; for (const c of String(s)) h = Math.imul(h ^ c.codePointAt(0), 16777619); return (h >>> 0) / 4294967296; };
+
+  $("#heute").textContent = new Intl.DateTimeFormat("de-DE", { weekday: "long", day: "numeric", month: "long", timeZone: TZ }).format(new Date());
+
+  // ---------------------------------------------------------------- Zustand
+  const S = {
+    mcp: null, db: null, sample: null, caps: false,
+    projektMeta: null, projekt: null, events: null,
+    zustand: null, bericht: null, themen: [], vorschlaege: [], agenten: {}, journal: [],
+    plan: null, tafelStand: null,
+    err: { todoist: null, kalender: null, db: null },
+  };
+  let blick = "puls";
+
+  // ---------------------------------------------------------------- Ableitungen
+  function aufgaben() {
+    if (!S.projekt) return [];
+    const alle = S.projekt.tasks || [];
+    const sek = new Map((S.projekt.sections || []).map((s) => [s.id, s]));
+    return alle.filter((t) => !t.checked && !t.isUncompletable).map((t) => {
+      const s = t.sectionId ? sek.get(t.sectionId) || null : null;
+      const roh = t.dueDate ? String(t.dueDate) : "";
+      const datum = roh ? roh.slice(0, 10) : null;
+      return {
+        art: "aufgabe", id: t.id, titel: schlicht(t.content), sektion: s,
+        roh, datum, uhrzeit: roh.length > 10 ? roh.slice(11, 16) : null,
+        tage: datum ? tageBis(datum) : null, labels: t.labels || [], prio: t.priority || "p4",
+        wiederkehrend: t.recurring || false, beschreibung: schlicht(t.description || ""),
+        unter: (t.children || []).filter((k) => !k.checked).length,
+      };
+    }).filter((t) => !(t.sektion && SEKTIONEN_AUS.includes(t.sektion.name)));
+  }
+  const sektionen = () => (S.projekt?.sections || []).filter((s) => !SEKTIONEN_AUS.includes(s.name))
+    .sort((a, b) => (a.sectionOrder || 0) - (b.sectionOrder || 0));
+
+  // Ganztägige Termine kommen mit exklusivem Ende und können mehrere Tage umspannen —
+  // sie erscheinen an jedem Tag, den sie belegen, nicht nur am ersten.
+  function termine() {
+    const von = tagNr(heute()), bis = von + BAHN_TAGE;
+    const raus = [];
+    for (const e of S.events || []) {
+      if (e.status === "cancelled") continue;
+      const ganz = !!e.start?.date && !e.start?.dateTime;
+      const titel = e.summary || "(ohne Titel)";
+      const text = schlicht(e.description || "");
+      if (ganz) {
+        const a = tagNr(String(e.start.date).slice(0, 10));
+        const b = Math.max(a + 1, tagNr(String(e.end?.date || e.start.date).slice(0, 10)));
+        const dauer = b - a;
+        for (let d = Math.max(a, von); d < Math.min(b, bis + 1); d++) {
+          raus.push({ art: "termin", id: e.id + (dauer > 1 ? ":" + d : ""), evId: e.id, titel, text,
+            datum: isoTag(d), uhrzeit: null, endUhr: null, ganz: true, tage: d - von,
+            teil: dauer > 1 ? `Tag ${d - a + 1} von ${dauer}` : null, verschiebbar: false });
+        }
+      } else {
+        const start = berlin(new Date(e.start.dateTime));
+        const d = tagNr(start.date);
+        if (d < von || d > bis) continue;
+        const vl = alsVorlesung(titel);
+        raus.push({ art: "termin", id: e.id, evId: e.id, titel, text, datum: start.date, uhrzeit: start.time,
+          endUhr: e.end?.dateTime ? berlin(new Date(e.end.dateTime)).time : null, ganz: false,
+          tage: d - von, teil: null, vorlesung: vl, fach: vl?.fach || null,
+          verschiebbar: !vl, rohStart: e.start.dateTime });
+      }
+    }
+    return raus.sort((a, b) => (a.datum + (a.uhrzeit || "")).localeCompare(b.datum + (b.uhrzeit || "")));
+  }
+
+  // Wiederholungs-Queue: echte Intervalle. Alte Themen ohne Stufe werden hier hergeleitet.
+  function themen() {
+    return S.themen.map((t) => {
+      const stufe = Number.isInteger(t.stufe) ? clamp(t.stufe, 0, INTERVALLE.length - 1)
+        : clamp(t.wiederholungen || 0, 0, INTERVALLE.length - 1);
+      const faellig = t.faellig || (t.zuletzt
+        ? isoTag(tagNr(berlin(new Date(t.zuletzt)).date) + INTERVALLE[stufe])
+        : heute());
+      return { ...t, stufe, faellig, tage: tageBis(faellig) };
+    });
+  }
+  const themenAktiv = () => {
+    const h = heute(), bald = isoTag(tagNr(h) + 7);
+    return themen().filter((t) => (!t.modulStart || t.modulStart <= bald) && (!t.modulEnde || t.modulEnde >= h));
+  };
+  const themenFaellig = () => themenAktiv().filter((t) => t.tage <= 0).sort((a, b) => a.tage - b.tage);
+
+  const dringlich = (x) => x.tage == null ? ["ruhig", 0.72] : x.tage < 0 ? ["alarm", 1.35]
+    : x.tage === 0 ? ["soon", 1.3] : x.tage <= 3 ? ["soon", 1.2] : x.tage <= 14 ? ["ruhig", 1.02] : ["ruhig", 0.8];
+
+  const laeufe = () => [...(S.zustand?.laeufe || [])].sort((a, b) => b.zeit.localeCompare(a.zeit));
+  const rechnerAlterTage = () => (S.zustand?.stand ? -tageBis(berlin(new Date(S.zustand.stand)).date) : null);
+  const planIds = () => (S.plan && S.plan.datum === heute() ? S.plan.ids || [] : []);
+  const stummBis = () => S.tafelStand?.stumm_bis || null;
+  const istStumm = () => { const b = stummBis(); return !!b && Date.parse(b) > Date.now(); };
+  const gesehenHeute = () => (S.tafelStand?.gesehen || {})[heute()] || [];
+
+  // ---------------------------------------------------------------- Fehlertexte
+  const AUTHZ = new Set(["needs_reauth", "server_not_connected", "server_not_found", "selection_required",
+    "blocked_by_policy", "approval_required", "not_in_manifest", "not_granted", "capability_disabled",
+    "capability_removed", "no_project", "consent_required", "user_changed"]);
+
+  function mcpText(e, name, schreiben) {
+    switch (e?.code) {
+      case "no_project": return "Kein Todoist-Projekt „Studium“ gefunden";
+      case "needs_reauth": return `${name} neu verbinden: claude.ai → Einstellungen → Connectors`;
+      case "server_not_connected": case "server_not_found":
+        return `${name} in claude.ai unter Einstellungen → Connectors verbinden`;
+      case "selection_required": return `In claude.ai auswählen, welches ${name}-Konto gilt`;
+      case "not_in_manifest": return `${name} ist für diese Seite nicht freigegeben`;
+      case "consent_required": return `${name} für diese Seite erlauben, dann nochmal versuchen`;
+      case "blocked_by_policy": case "approval_required": return `${name} ist durch eine Richtlinie gesperrt`;
+      case "not_granted": case "capability_disabled": case "capability_removed":
+        return "Live-Daten sind in dieser Ansicht nicht verfügbar";
+      case "rate_limited": return `Zu viele Anfragen an ${name}. Warte einen Moment.`;
+      case "server_unavailable": return `${name} antwortet gerade nicht. Gleich nochmal versuchen.`;
+      case "tool_error": return `${name}: ${e.message}`;
+      case "cancelled": return schreiben
+        ? `Abgebrochen — prüf in ${name}, ob es doch durchgelaufen ist.` : "Abgebrochen";
+      default: return schreiben
+        ? `${name} hat nicht sicher geantwortet. Prüf in ${name}, ob es angekommen ist, bevor Du es nochmal versuchst.`
+        : `${name} antwortet gerade nicht`;
+    }
+  }
+  const dbText = (e) => e?.code === "quota_exceeded" ? "Der Speicher des Gehirns ist voll."
+    : e?.code === "revoked" || e?.code === "not_granted" ? "Der Speicher ist in dieser Ansicht nicht verfügbar."
+    : "Speichern hat nicht geklappt. Versuch es nochmal.";
+  function sampleText(e) {
+    switch (e?.code) {
+      case "not_granted": case "sampling_disabled": case "not_declared": case "capability_disabled":
+      case "capability_removed": return "Claude ist für diese Seite nicht freigegeben. Eintragen per Kurzschrift geht weiter.";
+      case "rate_limited": return "Gerade zu viele Anfragen. Warte einen Moment.";
+      case "session_expired": return "Bitte bei claude.ai neu anmelden und die Seite neu laden.";
+      case "refused": return "Darauf antwortet Claude nicht. Formulier es bitte anders.";
+      case "prompt_too_large": return "Das war zu viel auf einmal. Teil es in kürzere Nachrichten auf.";
+      case "invalid_json": case "empty_completion": return "Die Antwort kam unvollständig an. Schick es nochmal, gern kürzer.";
+      default: return "Claude ist gerade nicht erreichbar. Versuch es gleich nochmal.";
+    }
+  }
+
+  // ---------------------------------------------------------------- Toast mit Rückgängig
+  const toastEl = $("#toast");
+  let toastUhr = null, zurueck = null;
+  function toast(text, undo) {
+    zurueck = undo || null;
+    toastEl.innerHTML = `<span>${esc(text)}</span>` + (undo ? `<button type="button" class="btn mini" data-undo>Rückgängig</button>` : "");
+    toastEl.hidden = false;
+    clearTimeout(toastUhr);
+    toastUhr = setTimeout(() => { toastEl.hidden = true; zurueck = null; }, undo ? 6000 : 4200);
+  }
+  toastEl.addEventListener("click", async (ev) => {
+    if (!ev.target.closest("[data-undo]") || !zurueck) return;
+    const fn = zurueck; zurueck = null;
+    toastEl.innerHTML = "<span>Wird zurückgenommen …</span>";
+    try { await fn(); toast("Zurückgenommen."); }
+    catch (e) { toast(e?.__text || "Zurücknehmen hat nicht geklappt."); }
+  });
+
+  // ---------------------------------------------------------------- Schreibschicht
+  async function tdo(tool, input) {
+    if (!S.mcp) throw { code: "not_granted" };
+    return (await S.mcp.callTool("Todoist", tool, input)).payload;
+  }
+  async function gcal(tool, input) {
+    if (!S.mcp) throw { code: "not_granted" };
+    return (await S.mcp.callTool("Google Calendar", tool, input)).payload;
+  }
+  const frischT = () => S.mcp?.invalidate("Todoist", "get-overview").catch(() => {});
+  const frischK = () => S.mcp?.invalidate("Google Calendar", "list_events").catch(() => {});
+  const weiter = (e, name, schreiben) => { const t = mcpText(e, name, schreiben); return Object.assign(new Error(t), { __text: t }); };
+
+  async function erledigen(t) {
+    try {
+      await tdo("complete-tasks", { ids: [t.id] });
+      frischT(); funke("todoist");
+      if (t.wiederkehrend) {
+        // Todoist schließt so eine Aufgabe nicht, sondern stellt sie weiter. Zurückgenommen
+        // wird deshalb über das Datum, nicht über uncomplete-tasks.
+        toast(`${kurz(t.titel, 30)}: abgehakt, der nächste Termin steht schon.`, t.roh ? async () => {
+          try { await tdo("reschedule-tasks", { tasks: [{ id: t.id, date: t.roh }] }); frischT(); }
+          catch (e) { throw weiter(e, "Todoist", true); }
+        } : null);
+      } else {
+        toast(`${kurz(t.titel, 38)}: erledigt.`, async () => {
+          try { await tdo("uncomplete-tasks", { ids: [t.id] }); frischT(); }
+          catch (e) { throw weiter(e, "Todoist", true); }
+        });
+      }
+      return true;
+    } catch (e) { toast(mcpText(e, "Todoist", true)); return false; }
+  }
+
+  // Wohin „Später“ verschiebt. Es bewegt die echte Frist — darum immer mit Rückgängig.
+  function spaeterZiele(x) {
+    const h = heute(), z = [];
+    if (x.art === "termin") {
+      if (!x.verschiebbar) return z;
+      if (x.tage === 0 && minuten(x.uhrzeit) + 60 < 24 * 60)
+        z.push({ label: "+1 Std", datum: h, uhrzeit: alsUhr(minuten(x.uhrzeit) + 60) });
+      z.push({ label: "Morgen", datum: isoTag(tagNr(x.datum) + 1), uhrzeit: x.uhrzeit });
+      if (!istWochenende(h)) z.push({ label: "Wochenende", datum: naechsterWochentag(6), uhrzeit: x.uhrzeit });
+      z.push({ label: "Nächste Woche", datum: naechsterWochentag(1), uhrzeit: x.uhrzeit });
+      return z;
+    }
+    if (x.uhrzeit && x.tage === 0 && minuten(x.uhrzeit) + 60 < 24 * 60)
+      z.push({ label: "+1 Std", datum: h, uhrzeit: alsUhr(minuten(x.uhrzeit) + 60) });
+    if ((x.tage ?? 0) <= 0 && minuten(berlin().time) < 18 * 60)
+      z.push({ label: "Heute Abend", datum: h, uhrzeit: "18:00" });
+    z.push({ label: "Morgen", datum: isoTag(tagNr(h) + 1), uhrzeit: null });
+    if (!istWochenende(h)) z.push({ label: "Wochenende", datum: naechsterWochentag(6), uhrzeit: null });
+    z.push({ label: "Nächste Woche", datum: naechsterWochentag(1), uhrzeit: null });
+    return z;
+  }
+  const zielWort = (z) => `${tageBis(z.datum) === 0 ? "heute" : tageBis(z.datum) === 1 ? "morgen" : kurzDatum(z.datum)}${z.uhrzeit ? ", " + z.uhrzeit : ""}`;
+
+  async function verschieben(x, ziel) {
+    if (x.art === "termin") {
+      // Gilt auch für den Weg über das Eingabefeld, der den Knopf umgeht.
+      if (!x.verschiebbar) {
+        toast(x.vorlesung ? "Vorlesungen verschiebt diese Seite nicht." : "Ganztägige Termine verschiebt diese Seite nicht.");
+        return false;
+      }
+      const start = `${ziel.datum}T${ziel.uhrzeit}:00${offsetFuer(ziel.datum)}`;
+      try {
+        await gcal("update_event", { eventId: x.evId, startTime: start, timeZone: TZ });
+        frischK(); funke("kalender");
+        toast(`${kurz(x.titel, 28)}: jetzt ${zielWort(ziel)}.`, async () => {
+          try { await gcal("update_event", { eventId: x.evId, startTime: x.rohStart, timeZone: TZ }); frischK(); }
+          catch (e) { throw weiter(e, "Google Kalender", true); }
+        });
+        return true;
+      } catch (e) { toast(mcpText(e, "Google Kalender", true)); return false; }
+    }
+    // Aufgabe. Wichtig: ein reines Datum löscht eine vorhandene Uhrzeit — entgegen der
+    // Tool-Beschreibung, an einem echten Aufruf belegt. Darum wird sie mitgeschickt.
+    const eff = { datum: ziel.datum, uhrzeit: ziel.uhrzeit || x.uhrzeit || null };
+    const datum = eff.uhrzeit ? `${eff.datum}T${eff.uhrzeit}:00` : eff.datum;
+    try {
+      await tdo("reschedule-tasks", { tasks: [{ id: x.id, date: datum }] });
+      frischT(); funke("todoist");
+      const undo = x.roh ? async () => {
+        try { await tdo("reschedule-tasks", { tasks: [{ id: x.id, date: x.roh }] }); frischT(); }
+        catch (e) { throw weiter(e, "Todoist", true); }
+      } : null;
+      toast(`${kurz(x.titel, 28)}: jetzt ${zielWort(eff)}.${x.roh ? "" : " Vorher stand kein Datum drin."}`, undo);
+      return true;
+    } catch (e) { toast(mcpText(e, "Todoist", true)); return false; }
+  }
+
+  async function wiederholen(t, art) {
+    if (!S.db) { toast("Der Speicher ist in dieser Ansicht nicht verfügbar."); return false; }
+    const alt = { stufe: t.stufe, faellig: t.faellig, zuletzt: t.zuletzt ?? null, wiederholungen: t.wiederholungen || 0 };
+    let neu, wort;
+    if (art === "morgen") {
+      neu = { ...alt, faellig: isoTag(tagNr(heute()) + 1) };
+      wort = `${kurz(t.name, 28)}: morgen nochmal.`;
+    } else {
+      const stufe = clamp(t.stufe + (art === "sitzt" ? 2 : 1), 0, INTERVALLE.length - 1);
+      neu = { stufe, faellig: isoTag(tagNr(heute()) + INTERVALLE[stufe]), zuletzt: new Date().toISOString(),
+        wiederholungen: (t.wiederholungen || 0) + 1 };
+      wort = `${kurz(t.name, 24)}: wieder dran in ${INTERVALLE[stufe]} Tagen.`;
+    }
+    try {
+      await S.db.doc("themen/" + t.id).update(neu);
+      funke("gedaechtnis");
+      toast(wort, async () => {
+        try { await S.db.doc("themen/" + t.id).update(alt); }
+        catch (e) { const s = dbText(e); throw Object.assign(new Error(s), { __text: s }); }
+      });
+      return true;
+    } catch (e) { toast(dbText(e)); return false; }
+  }
+
+  // ---------------------------------------------------------------- Einplanen: freie Fenster
+  function freieFenster(dauerMin, bisTag) {
+    const belegt = termine().filter((e) => !e.ganz && e.uhrzeit);
+    const raus = [];
+    for (let d = 0; d <= bisTag && raus.length < 3; d++) {
+      const datum = isoTag(tagNr(heute()) + d);
+      const frueh = d === 0 ? Math.max(minuten(berlin().time) + 15, TAG_VON * 60) : TAG_VON * 60;
+      let cursor = Math.ceil(frueh / 15) * 15;
+      const tages = belegt.filter((e) => e.datum === datum)
+        .map((e) => [minuten(e.uhrzeit), e.endUhr ? minuten(e.endUhr) : minuten(e.uhrzeit) + 60])
+        .sort((a, b) => a[0] - b[0]);
+      for (const [von, bis] of [...tages, [TAG_BIS * 60, TAG_BIS * 60]]) {
+        if (cursor + dauerMin > TAG_BIS * 60) break;
+        if (von - cursor >= dauerMin) { raus.push({ datum, uhrzeit: alsUhr(cursor) }); break; }
+        cursor = Math.max(cursor, bis);
+      }
+    }
+    return raus;
+  }
+
+  async function einplanen(t, slot, dauerMin) {
+    const start = `${slot.datum}T${slot.uhrzeit}:00${offsetFuer(slot.datum)}`;
+    const ende = `${slot.datum}T${alsUhr(minuten(slot.uhrzeit) + dauerMin)}:00${offsetFuer(slot.datum)}`;
+    try {
+      await gcal("create_event", { summary: t.titel, startTime: start, endTime: ende, timeZone: TZ,
+        description: `Arbeitsblock für die Aufgabe: ${t.titel}` });
+      frischK(); funke("kalender");
+      toast(`Block am ${kurzDatum(slot.datum)} um ${slot.uhrzeit} angelegt.`);
+      return true;
+    } catch (e) { toast(mcpText(e, "Google Kalender", true)); return false; }
+  }
+
+  // ---------------------------------------------------------------- Tagesplan
+  async function planSetzen(ids) {
+    if (!S.db) { toast("Der Speicher ist in dieser Ansicht nicht verfügbar."); return false; }
+    const vorher = planIds();
+    try {
+      await S.db.doc("cortex/tagesplan").set({ datum: heute(), ids: ids.slice(0, PLAN_MAX), gesetzt: new Date().toISOString() });
+      return true;
+    } catch (e) { toast(dbText(e)); return false; }
+  }
+  // Erinnerungen setzt diese Seite nicht: add-reminders ist auf diesem Todoist-Plan
+  // gesperrt (PREMIUM_ONLY — nur Erinnerungen zur Fälligkeitszeit sind erlaubt), an einem
+  // echten Aufruf belegt. Aufgaben mit Uhrzeit erinnert Todoist von sich aus; für alles
+  // andere ist der Morgen-Brief der Weg aufs Handy.
+
+  // ---------------------------------------------------------------- Tafel-Gedächtnis
+  async function tafelMerken(feld) {
+    if (!S.db) return;
+    const h = heute(), alt = S.tafelStand || {};
+    const gesehen = {};
+    for (const [k, v] of Object.entries(alt.gesehen || {})) if (k >= h) gesehen[k] = v;   // alte Tage wegräumen
+    const stand = { stumm_bis: alt.stumm_bis || null, letzteTafel: alt.letzteTafel || null,
+      slots: { ...(alt.slots || {}) }, gesehen };
+    if (feld.gesehenZusatz) {
+      stand.gesehen[h] = [...new Set([...(gesehen[h] || []), ...feld.gesehenZusatz])];
+      delete feld.gesehenZusatz;
+    }
+    Object.assign(stand, feld);
+    try { await S.db.doc("cortex/tafel").set(stand); } catch (e) { /* die Tafel darf daran nicht scheitern */ }
+  }
+
+  // ---------------------------------------------------------------- Organe
+  // Regel: ein Organ existiert nur, wenn sein Zustand sich ändern kann.
+  // Dokumentation (Regeltexte, Pfade, Skriptbeschreibungen) lebt im Detailblatt, nicht in der Geometrie.
+  const ORGANE = [
+    { id: "gmail", name: "Gmail", rolle: "Quelle", farbe: "#6FD6C4", pos: [-1.05, -0.15, 0.42],
+      text: "Fristen, Zusagen und Termine aus den letzten 24 Stunden. Antworten an andere Menschen entstehen nur als Entwurf." },
+    { id: "kalender", name: "Kalender", rolle: "Quelle & Ziel", farbe: "#6FD6C4", pos: [-1.08, -0.36, -0.10],
+      text: "Deine Termine, live aus Google Kalender." },
+    { id: "downloads", name: "Downloads", rolle: "Quelle · lokal", farbe: "#6FD6C4", pos: [1.05, -0.15, 0.42],
+      text: "Hier landet alles Neue. Die Reflexe wachen über offene Zugangsdaten und abgebrochene Downloads." },
+    { id: "notion", name: "Notion", rolle: "Quelle · Kontext", farbe: "#6FD6C4", pos: [1.08, -0.36, -0.10],
+      text: "Wird als Kontext gelesen. Wofür Du Notion nutzt, ist noch offen — solange bleibt dieses Organ leer." },
+    { id: "du", name: "Du", rolle: "Quelle · Mensch", farbe: "#86C5FF", pos: [0, -0.62, 0.60],
+      text: "Die wichtigste Quelle: alles, was nirgends eingetragen ist. Oben ins Feld tippen." },
+    { id: "takt", name: "Takt", rolle: "Morgenlauf 08:30", farbe: "#86C5FF", pos: [0, 0.14, 0.06], gross: true,
+      text: "Liest Gmail, Kalender, neue Dateien und Notion, zieht Fristen und Termine heraus und verteilt sie an Todoist, Bericht und Ablage." },
+    { id: "agent-ordnung", name: "Ordnungs-Agent", rolle: "Dateien & Regeln", farbe: "#86C5FF", pos: [-0.46, 0.44, 0.10],
+      text: "Prüft Skripte, Regeln, Protokolle und Ordnerstrukturen — nur über Metadaten, ohne Dokumente zu öffnen. Er schlägt vor; umgesetzt wird, was Du annimmst." },
+    { id: "agent-cortex", name: "Cortex-Agent", rolle: "diese Seite", farbe: "#86C5FF", pos: [0.46, 0.44, 0.10],
+      text: "Durchleuchtet dieses Gehirn: Code, Datenfrische, Bedienbarkeit, Datenschutz. Er schlägt vor; umgesetzt wird, was Du annimmst." },
+    { id: "plan", name: "Plan", rolle: "Fächer & Fristen", farbe: "#C7A8F5", pos: [0, 0.30, 0.80], gross: true,
+      text: "Das Todoist-Projekt Studium mit seinen Fächern." },
+    { id: "gedaechtnis", name: "Gedächtnis", rolle: "Lernthemen", farbe: "#8E9CFF", pos: [-0.50, 0.06, -0.95], gross: true,
+      text: "Jedes Thema kommt nach 1, 3, 7, 16 und 35 Tagen wieder dran. So siehst Du Lücken, bevor die Klausur sie findet." },
+    { id: "protokoll", name: "Protokoll", rolle: "Läufe & Inventar", farbe: "#8E9CFF", pos: [0.52, 0.10, -0.95],
+      text: "Jede Dateibewegung ist in logs\\ festgehalten und rückverfolgbar." },
+    { id: "haende", name: "Hände", rolle: "Skripte", farbe: "#F0B35A", pos: [0, 0.92, 0.02],
+      text: "Die PowerShell-Skripte, die Inventar, Duplikate, Aufräumen, Upload-Wache und Sortieren erledigen." },
+    { id: "reflexe", name: "Reflexe", rolle: "Schutzregeln", farbe: "#D98AA0", pos: [0, -0.70, -0.90],
+      text: "Nichts wird gelöscht. Zugangsdaten werden nur gemeldet. Mails nur als Entwurf. Jede Bewegung protokolliert. Laufende Downloads tabu. Kein Überschreiben." },
+    { id: "todoist", name: "Todoist", rolle: "Ziel", farbe: "#9FE3A6", pos: [-0.52, -0.42, 0.88],
+      text: "Aufgaben, die das System anlegt, tragen das Label auto." },
+    { id: "bericht", name: "Tagesbericht", rolle: "Ziel", farbe: "#9FE3A6", pos: [0.52, -0.42, 0.88],
+      text: "Kurz: was neu ist, was dringend ist, was abgelegt wurde und was Dich braucht." },
+    { id: "ablage", name: "Ablage", rolle: "Ziel · OneDrive", farbe: "#9FE3A6", pos: [-0.14, -0.66, 0.30],
+      text: "Gliederung nach Lebensbereichen: 01 Studium & Ausbildung, 02 Kanu & Verein, 05 Finanzen & Verwaltung, 99 Archiv. Statt löschen geht alles in die Quarantäne — datiert und zurückholbar." },
+  ];
+  const organById = Object.fromEntries(ORGANE.map((o) => [o.id, o]));
+  // Beschreibungen aus der bisherigen Fassung — sie erklaeren, was jedes Skript tut.
+  const SKRIPT_TEXT = {
+    s01: "Erfasst den Dateibestand und schreibt ihn nach daten\\inventar.csv.",
+    s02: "Sucht Duplikate im Inventar, auch über Laufwerke und die Cloud hinweg.",
+    s03: "Plant und verschiebt Dateien in Quarantäne und Ablage, mit Trockenlauf vorab.",
+    s04: "Entlastet OneDrive, damit der Cloud-Speicher nicht vollläuft.",
+    s05: "Wartet, bis Uploads fertig sind, bevor etwas bewegt wird.",
+    s06: "Liest Aufnahmedaten aus Fotos und Videos, damit sie nach echtem Datum abgelegt werden.",
+    s07: "Schreibt den Rechner-Stand in den Speicher dieses Gehirns.",
+    s08: "Prüft die Ablageregeln gegen den echten Downloads-Ordner.",
+    s09: "Sortiert Downloads nach den Ablageregeln. Erst ein Trockenlauf, dann wird nur verschoben, was Du freigibst. Jede Bewegung wird protokolliert, mit Rückgängig-Skript.",
+  };
+  const REFLEXE = [
+    ["Nichts wird gelöscht", "Quarantäne und Papierkorb statt endgültigem Löschen."],
+    ["Zugangsdaten nur melden", "Dateien wie Recovery-Codes, Passwortlisten oder VPN-Profile werden gemeldet, nie bewegt."],
+    ["Mails nur als Entwurf", "Senden an andere Menschen bleibt bei Dir."],
+    ["Jede Bewegung protokolliert", "Jede Dateibewegung landet in logs\\ und lässt sich zurückverfolgen."],
+    ["Laufende Downloads tabu", ".crdownload- und .part-Dateien werden nicht angefasst."],
+    ["Kein Überschreiben", "Bei Namenskonflikten gibt es ein Suffix wie _2, kein Datenverlust."],
+  ];
+  const KANTEN = [
+    ["gmail", "takt"], ["kalender", "takt"], ["downloads", "takt"], ["notion", "takt"], ["du", "takt"],
+    ["takt", "todoist"], ["takt", "bericht"], ["takt", "ablage"], ["takt", "plan"], ["takt", "haende"],
+    ["du", "plan"], ["du", "kalender"], ["plan", "todoist"], ["plan", "gedaechtnis"],
+    ["haende", "ablage"], ["haende", "protokoll"], ["haende", "reflexe"],
+    ["reflexe", "downloads"], ["reflexe", "ablage"], ["protokoll", "gedaechtnis"],
+    ["agent-ordnung", "haende"], ["agent-ordnung", "ablage"], ["agent-cortex", "takt"],
+    ["agent-cortex", "plan"], ["bericht", "notion"],
+  ];
+  const WARN_TEXT = {
+    zugangsdaten: { titel: "Zugangsdaten offen in Downloads", rat: "In den Passwort-Manager übernehmen, dann die Datei aus Downloads entfernen.", organ: "reflexe" },
+    abgebrochen: { titel: "Abgebrochener Download", rat: "Neu herunterladen oder entfernen. Das System fasst die Datei nicht an.", organ: "downloads" },
+    speicher: { titel: "Speicher wird knapp", rat: "Quarantäne leeren oder große Videos auf ein anderes Laufwerk verschieben.", organ: "ablage" },
+  };
+  const warnungen = () => (S.zustand?.warnungen || []).map((w) => ({ ...w,
+    titel: WARN_TEXT[w.art]?.titel || "Meldung vom Rechner", rat: WARN_TEXT[w.art]?.rat || "",
+    organ: WARN_TEXT[w.art]?.organ || "downloads" }));
+
+  function organZahl(o) {
+    switch (o.id) {
+      case "kalender": return S.events ? termine().length : null;
+      case "downloads": return S.zustand?.downloads?.dateien ?? null;
+      case "du": return S.journal.length || null;
+      case "takt": return laeufe().filter((r) => r.zeit.slice(0, 10) === heute()).length || null;
+      case "agent-ordnung": case "agent-cortex":
+        return S.vorschlaege.filter((v) => v.agent === o.id.replace("agent-", "") && v.status === "neu").length || null;
+      case "plan": return S.projekt ? aufgaben().length : null;
+      case "gedaechtnis": return themenFaellig().length || null;
+      case "protokoll": return laeufe().length || null;
+      case "haende": return (S.zustand?.skripte || []).length || null;
+      case "reflexe": return warnungen().length || null;
+      case "todoist": return S.projekt ? aufgaben().filter((t) => t.tage != null && t.tage <= 0).length || null : null;
+      case "bericht": return (S.bericht?.abschnitte || []).length || null;
+      case "ablage": return (S.zustand?.regeln?.zugeordnet) ?? null;
+      default: return null;
+    }
+  }
+  const organWarn = (o) => warnungen().some((w) => w.organ === o.id);
+
+  // ---------------------------------------------------------------- Bausteine
+  const pill = (k, t) => `<span class="pill ${k}">${esc(t)}</span>`;
+  const btn = (attrs, label, klasse = "") => `<button type="button" class="btn ${klasse}" ${attrs}>${esc(label)}</button>`;
+  const fakten = (paare) => {
+    const r = paare.filter((p) => p && p[1] !== "" && p[1] != null);
+    return r.length ? `<dl class="fakten">${r.map(([k, v]) => `<dt>${esc(k)}</dt><dd>${v}</dd>`).join("")}</dl>` : "";
+  };
+  const block = (titel, html) => (html ? `<div class="block"><h4>${esc(titel)}</h4>${html}</div>` : "");
+
+  function aktionen(x) {
+    const a = [];
+    if (x.art === "aufgabe" && S.mcp) {
+      a.push(btn(`data-do="erledigt" data-art="aufgabe" data-id="${esc(x.id)}"`, "Erledigt", "mini primary"));
+      a.push(btn(`data-do="spaeter" data-art="aufgabe" data-id="${esc(x.id)}"`, "Später", "mini"));
+      a.push(btn(`data-do="einplanen" data-art="aufgabe" data-id="${esc(x.id)}"`, "Einplanen", "mini"));
+    }
+    if (x.art === "termin" && S.mcp && x.verschiebbar)
+      a.push(btn(`data-do="spaeter" data-art="termin" data-id="${esc(x.id)}"`, "Später", "mini"));
+    if (x.art === "aufgabe" && S.db) {
+      const drin = planIds().includes(x.id);
+      a.push(btn(`data-do="plan" data-id="${esc(x.id)}"`, drin ? "Aus dem Tagesplan" : "Heute", "mini still"));
+    }
+    return a.length ? `<div class="z-a">${a.join("")}</div>` : "";
+  }
+
+  function zeile(x, opt = {}) {
+    const [ton] = dringlich(x);
+    const rechts = x.art === "termin"
+      ? (x.uhrzeit ? x.uhrzeit : "ganztägig")
+      : (x.tage == null ? "ohne Datum" : rel(x.tage));
+    const meta = [
+      x.art === "termin" ? (x.tage === 0 ? "heute" : kurzDatum(x.datum)) : (x.sektion?.name || "ohne Fach"),
+      x.vorlesung ? (x.endUhr ? `Vorlesung bis ${x.endUhr}` : "Vorlesung") : "",
+      x.vorlesung ? (x.fach || "Fach nicht zugeordnet") : "",
+      x.teil || "",
+      x.art === "aufgabe" && x.wiederkehrend ? "wiederkehrend" : "",
+      x.art === "aufgabe" && x.unter ? `${x.unter} Unteraufgaben` : "",
+      x.labels?.includes("abgabe") ? "Abgabe" : "",
+    ].filter(Boolean).join(" · ");
+    return `<div class="z ${ton}${x.labels?.includes("abgabe") ? " wichtig" : ""}">
+      <i></i>
+      <div class="z-t"><button type="button" data-do="blatt" data-art="${x.art}" data-id="${esc(x.id)}">${esc(kurz(x.titel, 90))}</button></div>
+      <div class="z-r">${esc(rechts)}</div>
+      ${meta ? `<div class="z-m">${esc(meta)}</div>` : ""}
+      ${opt.ohneAktionen ? "" : aktionen(x)}
+    </div>`;
+  }
+
+  function themaZeile(t) {
+    const anteil = t.tage <= 0 ? 0 : clamp(t.tage / INTERVALLE[t.stufe], 0, 1);
+    const wann = t.tage < 0 ? `seit ${-t.tage} ${-t.tage === 1 ? "Tag" : "Tagen"} fällig`
+      : t.tage === 0 ? "heute fällig" : `in ${t.tage} ${t.tage === 1 ? "Tag" : "Tagen"}`;
+    return `<div class="z ${t.tage <= 0 ? "soon" : "satt"}">
+      <i></i>
+      <div class="z-t">${esc(t.name)}</div>
+      <div class="z-r">${esc(wann)}</div>
+      <div class="z-m">${esc(t.modul || "")} · Stufe ${t.stufe + 1} von ${INTERVALLE.length}${t.zuletzt ? " · zuletzt " + esc(vorTagen(t.zuletzt)) : " · noch nie"}
+        <span class="bar" style="--c:${t.tage <= 0 ? "var(--soon)" : "var(--ok)"}"><b style="width:${Math.round((1 - anteil) * 100)}%"></b></span></div>
+      ${S.db ? `<div class="z-a">
+        ${btn(`data-do="wiederholt" data-id="${esc(t.id)}"`, "Wiederholt", "mini primary")}
+        ${btn(`data-do="morgen" data-id="${esc(t.id)}"`, "Morgen nochmal", "mini")}
+        ${btn(`data-do="sitzt" data-id="${esc(t.id)}"`, "Sitzt", "mini still")}
+      </div>` : ""}
+    </div>`;
+  }
+
+  // ---------------------------------------------------------------- Puls
+  const sekt = (titel, zusatz, inhalt, weit) =>
+    `<section class="sekt${weit ? " weit" : ""}"><h2>${esc(titel)}${zusatz ? `<em>${esc(zusatz)}</em>` : ""}</h2>${inhalt}</section>`;
+  const leer = (t) => `<p class="leer">${esc(t)}</p>`;
+
+  function planSektion() {
+    if (!S.db) return sekt("Drei für heute", "", leer("Der Speicher ist in dieser Ansicht nicht verfügbar — der Tagesplan braucht ihn."), true);
+    const ids = planIds(), A = aufgaben();
+    const reihen = [];
+    for (let i = 0; i < PLAN_MAX; i++) {
+      const id = ids[i];
+      if (!id) {
+        reihen.push(`<div class="slot frei"><span class="n">${i + 1}</span><span class="t">noch frei</span>
+          ${btn(`data-do="planwahl"`, "Wählen", "mini still")}</div>`);
+        continue;
+      }
+      const t = A.find((x) => x.id === id);
+      if (!t) {
+        reihen.push(`<div class="slot fertig"><span class="n">${i + 1}</span><span class="t">erledigt oder verschoben</span>
+          ${btn(`data-do="planweg" data-id="${esc(id)}"`, "Platz frei", "mini still")}</div>`);
+        continue;
+      }
+      reihen.push(`<div class="slot"><span class="n">${i + 1}</span>
+        <span class="t"><button type="button" class="z-t" data-do="blatt" data-art="aufgabe" data-id="${esc(t.id)}" style="all:unset;cursor:pointer">${esc(kurz(t.titel, 60))}</button></span>
+        ${S.mcp ? btn(`data-do="erledigt" data-art="aufgabe" data-id="${esc(t.id)}"`, "Erledigt", "mini primary") : ""}</div>`);
+    }
+    const zusatz = ids.length ? `${ids.filter((id) => !A.find((x) => x.id === id)).length} von ${ids.length} erledigt` : "";
+    const ohneZeit = ids.map((id) => A.find((x) => x.id === id)).filter((t) => t && !t.uhrzeit).length;
+    const hinweis = ohneZeit
+      ? `<p class="leer">Aufs Handy erinnert Todoist nur Aufgaben mit Uhrzeit — eigene Erinnerungszeiten braucht Premium. Für die übrigen ist der Morgen-Brief der Weg.</p>`
+      : "";
+    return sekt("Drei für heute", zusatz, `<div class="plan">${reihen.join("")}</div>${hinweis}`, true);
+  }
+
+  function jetztSektion() {
+    const A = aufgaben(), T = termine(), jetztMin = minuten(berlin().time);
+    const ueberfaellig = A.filter((t) => t.tage != null && t.tage < 0).sort((a, b) => a.tage - b.tage);
+    const heuteAuf = A.filter((t) => t.tage === 0);
+    const heuteTerm = T.filter((e) => e.tage === 0 && (!e.uhrzeit || minuten(e.uhrzeit) >= jetztMin - 60));
+    const w = warnungen();
+    const teile = [];
+    if (ueberfaellig.length) teile.push(ueberfaellig.map((t) => zeile(t)).join(""));
+    if (heuteAuf.length) teile.push(heuteAuf.map((t) => zeile(t)).join(""));
+    if (heuteTerm.length) teile.push(heuteTerm.map((e) => zeile(e)).join(""));
+    if (w.length) teile.push(w.map((x) => warnZeile(x)).join(""));
+    if (!teile.length) {
+      const grund = !S.projekt && !S.events ? "Noch keine Live-Daten." : "Heute ist nichts fällig und nichts überfällig.";
+      return sekt("Jetzt", "", leer(grund));
+    }
+    return sekt("Jetzt", `${ueberfaellig.length ? ueberfaellig.length + " überfällig" : "nichts überfällig"}`,
+      `<div class="sekt">${teile.join("")}</div>`);
+  }
+
+  function warnZeile(w) {
+    return `<div class="z alarm">
+      <i></i>
+      <div class="z-t">${esc(w.titel)}</div>
+      <div class="z-r">${esc(w.seit ? vorTagen(w.seit) : "")}</div>
+      <div class="z-m">${esc(w.detail || "")}${w.rat ? " · " + esc(w.rat) : ""}</div>
+      ${S.db ? `<div class="z-a">${btn(`data-do="passt" data-art="warnung" data-id="${esc(w.id)}"`, "Passt", "mini")}</div>` : ""}
+    </div>`;
+  }
+
+  function kommtSektion() {
+    const A = aufgaben().filter((t) => t.tage != null && t.tage > 0 && t.tage <= BAHN_TAGE);
+    const T = termine().filter((e) => e.tage > 0);
+    const alles = [...A, ...T].sort((a, b) => (a.datum + (a.uhrzeit || "")).localeCompare(b.datum + (b.uhrzeit || ""))).slice(0, 5);
+    const spaeter = aufgaben().filter((t) => t.tage != null && t.tage > BAHN_TAGE).length;
+    if (!alles.length) return sekt("Kommt", "", leer("In den nächsten zwei Wochen steht nichts."));
+    return sekt("Kommt", `nächste ${BAHN_TAGE} Tage${spaeter ? ` · ${spaeter} später` : ""}`,
+      `<div class="sekt">${alles.map((x) => zeile(x, { ohneAktionen: x.art === "termin" })).join("")}</div>
+       ${btn(`data-do="blick" data-blick="bahn"`, "In der Bahn ansehen", "mini still")}`);
+  }
+
+  function rechnerSektion() {
+    if (!S.db) return sekt("Was der Rechner tat", "", leer("Der Rechner-Stand kommt aus dem Speicher, der hier nicht verfügbar ist."));
+    if (!S.zustand) return sekt("Was der Rechner tat", "", leer(S.err.db ? dbText(S.err.db) : "Noch kein Rechner-Stand eingetroffen."));
+    const alter = rechnerAlterTage();
+    const L = laeufe(), letzte = L[0];
+    const heuteL = L.filter((r) => r.zeit.slice(0, 10) === heute());
+    const d = S.zustand.downloads || {};
+    const eng = (S.zustand.speicher || []).filter((s) => s.freiGB / s.gesamtGB < 0.12);
+    const zeilen = [];
+    if (letzte) zeilen.push(`<div class="z ruhig"><i></i>
+      <div class="z-t">${esc(letzte.gruppe)}${letzte.typ === "plan" ? " · Trockenlauf" : ""}</div>
+      <div class="z-r">${esc(stempel(letzte.zeit))}</div>
+      <div class="z-m">${esc(zahl(letzte.zeilen))} Zeilen protokolliert${heuteL.length ? ` · ${heuteL.length} Läufe heute` : ""} · Zurückholen über logs\\</div></div>`);
+    if (d.dateien) zeilen.push(`<div class="z ruhig"><i></i>
+      <div class="z-t">Downloads</div><div class="z-r">${esc(zahl(d.dateien))}</div>
+      <div class="z-m">${esc(zahl(d.mb))} MB · ${esc(zahl(d.neu7Tage))} neu in 7 Tagen</div></div>`);
+    for (const s of eng) zeilen.push(`<div class="z soon"><i></i>
+      <div class="z-t">Laufwerk ${esc(s.laufwerk)} wird knapp</div>
+      <div class="z-r">${esc(s.freiGB)} GB frei</div>
+      <div class="z-m">von ${esc(zahl(s.gesamtGB))} GB
+        <span class="bar" style="--c:var(--soon)"><b style="width:${Math.round((1 - s.freiGB / s.gesamtGB) * 100)}%"></b></span></div></div>`);
+    const zusatz = alter == null ? "" : alter <= 0 ? "Stand von heute" : alter === 1 ? "Stand von gestern" : `Stand ${alter} Tage alt`;
+    return sekt("Was der Rechner tat", zusatz, `<div class="sekt">${zeilen.join("") || leer("Keine Läufe verzeichnet.")}</div>`);
+  }
+
+  function wiederholenSektion() {
+    if (!S.db) return "";
+    const aktiv = themenAktiv().sort((a, b) => a.tage - b.tage);
+    if (!aktiv.length) return sekt("Wiederholen", "", leer(S.themen.length ? "Für die laufenden Module steht nichts an." : "Noch keine Lernthemen angelegt."));
+    const faellig = aktiv.filter((t) => t.tage <= 0);
+    const zeig = faellig.length ? faellig.slice(0, 6) : aktiv.slice(0, 3);
+    return sekt("Wiederholen", faellig.length ? `${faellig.length} fällig` : "nichts fällig",
+      `<div class="sekt">${zeig.map(themaZeile).join("")}</div>`);
+  }
+
+  const ohneLive = () => S.caps && !S.mcp && !S.db;
+  function renderPuls() {
+    if (blick !== "puls") return;
+    const el = $("#pulsSpalten");
+    if (!S.caps) {
+      el.innerHTML = sekt("Puls", "", `<div class="z ruhig"><i></i><div class="z-t">Verbinde mit Todoist, Kalender und dem Speicher …</div></div>`, true);
+      return;
+    }
+    if (ohneLive()) {
+      el.innerHTML = sekt("Diese Ansicht", "", `<div class="z ruhig"><i></i>
+        <div class="z-t">Hier siehst Du das Gerüst, nicht Deinen Tag.</div>
+        <div class="z-m">Aufgaben, Termine und der Rechner-Stand hängen an Deiner Claude-Anmeldung. Öffne die Seite in claude.ai — dann füllen sich Puls und Bahn, und Eintragen, Verschieben und Wiederholen funktionieren.</div>
+        <div class="z-a">${btn(`data-do="blick" data-blick="gehirn"`, "Aufbau ansehen", "mini")}</div></div>`, true);
+      return;
+    }
+    el.innerHTML = planSektion() + jetztSektion() + kommtSektion() + rechnerSektion() + wiederholenSektion();
+  }
+
+  // ---------------------------------------------------------------- Statuszeile
+  function renderStatus() {
+    const s = (ton, text) => `<span class="${ton}"><i></i>${esc(text)}</span>`;
+    const teile = [];
+    if (!S.caps) teile.push(s("wait", "Verbinde …"));
+    else {
+      if (!S.mcp) teile.push(s("muted", "Todoist und Kalender nur in der Claude-Ansicht live"));
+      else {
+        teile.push(S.err.todoist && !S.projekt ? s("alarm", mcpText(S.err.todoist, "Todoist"))
+          : s(S.projekt ? "ok" : "wait", S.projekt ? "Todoist live" : "Todoist lädt …"));
+        teile.push(S.err.kalender && !S.events ? s("alarm", mcpText(S.err.kalender, "Google Kalender"))
+          : s(S.events ? "ok" : "wait", S.events ? "Kalender live" : "Kalender lädt …"));
+      }
+      if (!S.db) teile.push(s("muted", "Speicher nicht verfügbar"));
+      else if (S.err.db && !S.zustand) teile.push(s("alarm", dbText(S.err.db)));
+      else if (S.zustand) {
+        const a = rechnerAlterTage();
+        teile.push(s(a > 2 ? "alarm" : "ok", a > 2 ? `Rechner-Stand ${a} Tage alt` : `Rechner-Stand ${stempel(S.zustand.stand)}`));
+      } else teile.push(s("wait", "Rechner-Stand fehlt noch"));
+      if (istStumm()) teile.push(s("muted", `Ruhe bis ${stempel(stummBis())}`));
+    }
+    $("#status").innerHTML = teile.join("");
+  }
+
+  // ---------------------------------------------------------------- Organ-Navigation
+  function renderOrgane() {
+    const el = $("#organe");
+    el.innerHTML = `<h2>Organe</h2>` + ORGANE.map((o) => {
+      const n = organZahl(o), w = organWarn(o);
+      return `<button type="button" class="organ${w ? " warn" : ""}" data-do="organ" data-id="${o.id}" style="--c:${o.farbe}">
+        <i></i><span>${esc(o.name)}<em>${esc(o.rolle)}</em></span><small>${n == null ? "—" : esc(zahl(n))}</small></button>`;
+    }).join("");
+  }
+
+  // ---------------------------------------------------------------- Detailblatt
+  const blatt = $("#blatt"), blattBody = $("#blattBody");
+  let blattWas = null;
+  function blattZu() { blatt.hidden = true; blattWas = null; if (typeof auswahlSetzen === "function") auswahlSetzen(null); }
+  function blattZeigen(html, was) {
+    blattWas = was || null;
+    blattBody.innerHTML = html + `<div class="z-a" style="margin:0">${btn(`data-do="zu"`, "Schließen", "mini still")}</div>`;
+    blatt.hidden = false;
+    blattBody.scrollTop = 0;
+  }
+  $(".griff").addEventListener("click", blattZu);
+
+  function findeSache(art, id) {
+    if (art === "aufgabe") return aufgaben().find((t) => t.id === id) || null;
+    if (art === "termin") return termine().find((e) => e.id === id) || null;
+    if (art === "thema") return themen().find((t) => t.id === id) || null;
+    if (art === "warnung") return warnungen().find((w) => w.id === id) || null;
+    return null;
+  }
+
+  function blattSache(art, id) {
+    const x = findeSache(art, id);
+    if (!x) return;
+    if (art === "aufgabe") {
+      const wann = x.datum ? `${kurzDatum(x.datum)}${x.uhrzeit ? ", " + x.uhrzeit : ""} · ${rel(x.tage)}` : "ohne Datum";
+      blattZeigen(`<h3>${esc(x.titel)}</h3>
+        ${fakten([["Fällig", esc(wann)], ["Fach", esc(x.sektion?.name || "ohne Fach")],
+          ["Labels", (x.labels || []).length ? x.labels.map((l) => pill(l === "abgabe" ? "alarm" : "info", l)).join(" ") : ""],
+          ["Wiederholung", x.wiederkehrend ? esc(x.wiederkehrend) : ""],
+          ["Unteraufgaben", x.unter ? esc(zahl(x.unter) + " offen") : ""],
+          ["Priorität", x.prio !== "p4" ? pill("muted", x.prio) : ""]])}
+        ${x.beschreibung ? `<p>${esc(x.beschreibung)}</p>` : ""}
+        ${aktionen(x)}`, { art, id });
+      return;
+    }
+    if (art === "termin") {
+      blattZeigen(`<h3>${esc(x.titel)}</h3>
+        ${fakten([["Wann", esc(`${x.tage === 0 ? "heute" : kurzDatum(x.datum)}${x.uhrzeit ? `, ${x.uhrzeit}${x.endUhr ? "–" + x.endUhr : ""}` : " · ganztägig"}`)],
+          ["Art", x.vorlesung ? "Vorlesung" : ""],
+          ["Fach", x.vorlesung ? esc(x.fach || "noch nicht zugeordnet") : ""],
+          ["Dauer", x.teil ? esc(x.teil) : ""]])}
+        ${x.vorlesung && !x.fach ? `<p class="leer">Dieses Fach ist keiner Todoist-Sektion zugeordnet — sag mir, welche gemeint ist, dann hängen Aufgaben und Vorlesung zusammen.</p>` : ""}
+        ${x.text ? `<p>${esc(kurz(x.text, 400))}</p>` : ""}
+        ${aktionen(x)}`, { art, id });
+      return;
+    }
+    if (art === "thema") { blattZeigen(themaZeile(x), { art, id }); return; }
+    if (art === "warnung") {
+      blattZeigen(`<h3>${esc(x.titel)}</h3>${fakten([["Datei", esc(x.detail || "")], ["Seit", x.seit ? esc(stempel(x.seit)) : ""],
+        ["Stufe", esc(x.stufe || "")]])}${x.rat ? `<p>${esc(x.rat)}</p>` : ""}
+        ${S.db ? `<div class="z-a">${btn(`data-do="passt" data-art="warnung" data-id="${esc(x.id)}"`, "Passt", "mini")}</div>` : ""}`, { art, id });
+    }
+  }
+
+  function blattOrgan(id) {
+    const o = organById[id];
+    if (!o) return;
+    const kopf = `<span class="organ-marke" style="--c:${o.farbe}"><i></i>${esc(o.rolle)}</span>
+      <h3>${esc(o.name)}</h3>`;
+    const p = (t) => (t ? `<p>${esc(t)}</p>` : "");
+    let inhalt = p(o.text);
+    const liste = (arr, f) => `<ul class="liste">${arr.map(f).join("")}</ul>`;
+
+    if (id === "kalender") {
+      if (!S.events) inhalt += p(S.err.kalender ? mcpText(S.err.kalender, "Google Kalender") : "Kalender lädt …");
+      else { const T = termine(); inhalt += block(`Nächste ${BAHN_TAGE} Tage`, T.length ? T.slice(0, 12).map((e) => zeile(e, { ohneAktionen: true })).join("") : leer("Keine Termine.")); }
+    } else if (id === "plan") {
+      if (!S.projekt) inhalt += p(S.err.todoist ? mcpText(S.err.todoist, "Todoist") : "Todoist lädt …");
+      else {
+        const A = aufgaben(), Sek = sektionen();
+        inhalt += fakten([["Offen", esc(zahl(A.length))], ["Fächer", esc(zahl(Sek.length))]]);
+        const T = termine().filter((e) => e.vorlesung);
+        inhalt += block("Fächer", liste(Sek, (s) => {
+          const n = A.filter((t) => t.sectionId === s.id || t.sektion?.id === s.id).length;
+          const vl = T.filter((e) => e.fach === s.name);
+          const naechste = vl[0];
+          return `<li class="z ${n ? "ruhig" : ""}"><i></i><div class="z-t">${esc(s.name)}</div><div class="z-r">${n} offen</div>
+            <div class="z-m">${naechste ? `nächste Vorlesung ${esc(kurzDatum(naechste.datum))} ${esc(naechste.uhrzeit || "")}${vl.length > 1 ? ` · ${vl.length} in ${BAHN_TAGE} Tagen` : ""}` : "keine Vorlesung in den nächsten " + BAHN_TAGE + " Tagen"}${s.description ? " · " + esc(s.description) : ""}</div></li>`;
+        }));
+        const offen = [...new Set(T.filter((e) => !e.fach).map((e) => e.vorlesung.kurz))];
+        if (offen.length) inhalt += `<p class="leer">Ohne Fach-Zuordnung: ${esc(offen.join(", "))}.</p>`;
+      }
+    } else if (id === "todoist") {
+      const A = aufgaben().filter((t) => t.tage != null && t.tage <= 0);
+      inhalt += block("Heute wirklich", A.length ? A.map((t) => zeile(t)).join("") : leer(S.projekt ? "Heute ist nichts fällig." : "Todoist lädt …"));
+    } else if (id === "gedaechtnis") {
+      if (!S.db) inhalt += p("Der Speicher ist in dieser Ansicht nicht verfügbar.");
+      else {
+        const alle = themen();
+        inhalt += fakten([["Themen", esc(zahl(alle.length))], ["Fällig", esc(zahl(themenFaellig().length))],
+          ["Intervalle", INTERVALLE.join(" · ") + " Tage"]]);
+        for (const m of [...new Set(alle.map((t) => t.modul))])
+          inhalt += block(m || "ohne Modul", alle.filter((t) => t.modul === m)
+            .sort((a, b) => (a.reihenfolge || 0) - (b.reihenfolge || 0)).map(themaZeile).join(""));
+      }
+    } else if (id === "protokoll") {
+      const L = laeufe();
+      inhalt += fakten([["Läufe", esc(zahl(L.length))], ["Zeilen gesamt", esc(zahl(L.reduce((s, r) => s + (r.zeilen || 0), 0)))]]);
+      inhalt += block("Zuletzt", L.length ? liste(L.slice(0, 10), (r) => `<li class="z"><i></i>
+        <div class="z-t">${esc(r.gruppe)}${r.typ === "plan" ? " · Trockenlauf" : ""}</div>
+        <div class="z-r">${esc(stempel(r.zeit))}</div>
+        <div class="z-m">${esc(zahl(r.zeilen))} Zeilen · ${esc(r.datei)}</div></li>`) : leer("Noch keine Läufe."));
+    } else if (id === "haende") {
+      const sk = S.zustand?.skripte || [];
+      inhalt += block("Skripte", sk.length ? liste(sk, (s) => `<li class="z"><i></i>
+        <div class="z-t">${esc(s.datei)}</div><div class="z-r">${esc(stempel(s.geaendert))}</div>
+        ${SKRIPT_TEXT[s.id] ? `<div class="z-m">${esc(SKRIPT_TEXT[s.id])}</div>` : ""}</li>`) : leer("Kein Rechner-Stand."));
+    } else if (id === "reflexe") {
+      const w = warnungen();
+      inhalt += block("Die sechs Regeln", liste(REFLEXE, ([t, x], i) => `<li class="z"><i></i>
+        <div class="z-t">${esc(t)}</div><div class="z-r">${i + 1} von 6</div>
+        <div class="z-m">${esc(x)}</div></li>`));
+      inhalt += block("Aktuell gemeldet", w.length ? w.map(warnZeile).join("")
+        : leer(S.zustand ? "Beim letzten Rechner-Stand ist nichts aufgefallen." : "Kein Rechner-Stand."));
+    } else if (id === "downloads") {
+      const d = S.zustand?.downloads;
+      if (d) inhalt += fakten([["Dateien", esc(zahl(d.dateien))], ["Größe", esc(zahl(d.mb)) + " MB"], ["Neu (7 Tage)", esc(zahl(d.neu7Tage))]]);
+      const w = warnungen().filter((x) => x.organ === "downloads");
+      if (w.length) inhalt += block("Meldungen", w.map(warnZeile).join(""));
+    } else if (id === "ablage") {
+      const r = S.zustand?.regeln;
+      if (r) {
+        inhalt += fakten([["Geprüft", esc(`${zahl(r.dateien)} Dateien · ${stempel(r.stand)}`)],
+          ["Zugeordnet", esc(zahl(r.zugeordnet))], ["Prüfst Du", esc(zahl(r.liegenLassen))]]);
+        inhalt += block("Regeln · erste passende gewinnt", liste((r.regeln || []).filter((x) => x.treffer > 0), (x) => `<li class="z"><i></i>
+          <div class="z-t">${esc(x.name)}</div><div class="z-r">${esc(zahl(x.treffer))}</div>
+          <div class="z-m">${esc(x.aktion)}${x.zielVorhanden === false ? " · Zielordner fehlt" : ""}</div></li>`));
+        const fehl = r.beispielFehler || [];
+        if (fehl.length) inhalt += block("Beispiele, die nicht passen", liste(fehl, (e) => `<li class="z alarm"><i></i>
+          <div class="z-t">${esc(e.beispiel)}</div><div class="z-m">${esc(e.grund)}</div></li>`));
+      }
+    } else if (id === "takt") {
+      const ph = S.zustand?.phasen || [];
+      const p4 = ph.find((x) => x.nr === 4);
+      inhalt += fakten([["Takt", "täglich 08:30"], ["Status", p4 ? (p4.status === "erledigt" ? pill("ok", "eingerichtet") : pill("open", "noch nicht eingerichtet · Phase 4")) : ""]]);
+      if (ph.length) inhalt += block("Phasen", liste(ph, (x) => `<li class="z"><i></i>
+        <div class="z-t">${x.nr} · ${esc(x.name)}</div><div class="z-r">${x.status === "erledigt" ? "erledigt" : "offen"}</div></li>`));
+    } else if (id === "bericht") {
+      const b = S.bericht;
+      if (!b) inhalt += p("Noch kein Bericht. Er entsteht beim nächsten Morgenlauf.");
+      else { inhalt += fakten([["Stand", esc(stempel(b.stand))]]);
+        for (const a of b.abschnitte || []) inhalt += block(a.titel, (a.punkte || []).length
+          ? liste(a.punkte, (x) => `<li class="z ${a.ton || ""}"><i></i><div class="z-t">${esc(x)}</div></li>`) : leer("Nichts.")); }
+    } else if (id === "du") {
+      inhalt += block("Zuletzt angelegt", S.journal.length ? liste(S.journal.slice(0, 8), (j) => `<li class="z"><i></i>
+        <div class="z-t">${esc(j.titel)}</div><div class="z-r">${esc(stempel(j.am))}</div>
+        <div class="z-m">${j.art === "termin" ? "Termin" : "Aufgabe"}${j.datum ? " · " + esc(kurzDatum(j.datum)) : ""}${j.uhrzeit ? " " + esc(j.uhrzeit) : ""}</div></li>`)
+        : leer("Noch nichts über das Feld oben angelegt."));
+    } else if (id === "agent-ordnung" || id === "agent-cortex") {
+      if (!S.db) inhalt += p("Der Speicher ist in dieser Ansicht nicht verfügbar.");
+      else {
+        const key = id.replace("agent-", "");
+        const meta = S.agenten[key];
+        const rang = (v) => ({ neu: 0, angenommen: 1, umgesetzt: 2, abgelehnt: 3, "überholt": 3 }[v.status] ?? 4);
+        const list = S.vorschlaege.filter((v) => v.agent === key).sort((a, b) => rang(a) - rang(b) || (a.nr || 0) - (b.nr || 0));
+        const ST = { neu: ["info", "neu"], angenommen: ["ok", "wird umgesetzt"], umgesetzt: ["ok", "umgesetzt"],
+          abgelehnt: ["muted", "verworfen"], "überholt": ["muted", "überholt"] };
+        const RISIKO = { niedrig: "ok", mittel: "open", hoch: "alarm" };
+        if (!meta && !list.length) inhalt += p("Noch kein Lauf. Sag im Chat „Starte die Agenten“.");
+        else {
+          inhalt += fakten([["Letzter Lauf", meta?.lauf ? esc(stempel(meta.lauf)) : ""], ["Geprüft", meta?.geprueft ? esc(meta.geprueft) : ""]]);
+          if (meta?.zusammenfassung) inhalt += p(meta.zusammenfassung);
+          const neu = list.filter((v) => v.status === "neu").length;
+          inhalt += block(neu ? `Vorschläge · ${neu} neu` : "Vorschläge", list.map((v) => {
+            const [sc, st] = ST[v.status] || ["muted", v.status];
+            return `<div class="karte-v${v.status === "neu" ? "" : " erledigt"}">
+              <h5>${esc(v.titel)}</h5>
+              <p><b>Befund</b> ${esc(v.befund)}</p><p><b>Vorschlag</b> ${esc(v.vorschlag)}</p>
+              <div class="meta">${pill(sc, st)}${v.bereich ? pill("muted", v.bereich) : ""}${pill("muted", "Aufwand " + (v.aufwand || "?"))}${pill(RISIKO[v.risiko] || "muted", "Risiko " + (v.risiko || "?"))}</div>
+              ${v.status === "neu" ? `<div class="z-a" style="margin:0">
+                ${btn(`data-do="vorschlag" data-id="${esc(v.id)}" data-status="angenommen"`, "Umsetzen lassen", "mini primary")}
+                ${btn(`data-do="vorschlag" data-id="${esc(v.id)}" data-status="abgelehnt"`, "Verwerfen", "mini")}</div>` : ""}</div>`;
+          }).join(""));
+          if (list.some((v) => v.status === "angenommen"))
+            inhalt += `<p class="leer">Angenommenes setzt Claude um, sobald Du im Chat sagst: „Setze die angenommenen Vorschläge um“.</p>`;
+        }
+      }
+    } else if (id === "gmail" || id === "notion") {
+      inhalt += p(id === "gmail" ? "Diese Quelle liest der Morgenlauf auf dem Rechner — sie hat hier keinen eigenen Live-Stand."
+        : "Sobald klar ist, was in Notion liegt, kann dieses Organ etwas anzeigen.");
+    }
+    blattZeigen(kopf + inhalt, { art: "organ", id });
+  }
+
+  // ---------------------------------------------------------------- Später & Einplanen
+  function blattSpaeter(art, id) {
+    const x = findeSache(art, id);
+    if (!x) return;
+    const ziele = spaeterZiele(x);
+    if (!ziele.length) return blattZeigen(`<h3>${esc(kurz(x.titel, 60))}</h3>
+      <p>${x.vorlesung ? "Eine Vorlesung verschiebt diese Seite nicht — die steht, wie sie steht."
+        : "Ganztägige Termine verschiebt diese Seite nicht — das machst Du besser direkt im Kalender."}</p>`);
+    blattZeigen(`<h3>${esc(kurz(x.titel, 60))}</h3>
+      <p>Das verschiebt die echte Frist, nicht nur die Erinnerung. Direkt danach kannst Du es zurücknehmen.</p>
+      <div class="spaeter"><span class="spaeter-kopf">Verschieben auf</span>
+      ${ziele.map((o) => btn(`data-do="spaeterZiel" data-art="${art}" data-id="${esc(id)}" data-datum="${o.datum}" data-uhrzeit="${o.uhrzeit || ""}"`,
+        `${o.label} · ${zielWort(o)}`, "mini")).join("")}</div>`);
+  }
+
+  function blattEinplanen(id, dauer = 60) {
+    const t = findeSache("aufgabe", id);
+    if (!t) return;
+    const bisTag = t.tage != null && t.tage > 0 ? Math.min(t.tage, 7) : 7;
+    const slots = freieFenster(dauer, bisTag);
+    blattZeigen(`<h3>${esc(kurz(t.titel, 60))}</h3>
+      <p>Wann machst Du das? Diese Seite sucht ein freies Fenster zwischen ${TAG_VON} und ${TAG_BIS} Uhr und legt einen Block im Kalender an.</p>
+      <div class="spaeter"><span class="spaeter-kopf">Dauer</span>
+        ${[30, 60, 90, 120].map((m) => btn(`data-do="einplanenDauer" data-id="${esc(id)}" data-dauer="${m}"`,
+          `${m} Min`, "mini" + (m === dauer ? " primary" : ""))).join("")}</div>
+      ${slots.length ? `<div class="spaeter"><span class="spaeter-kopf">Freie Fenster</span>
+        ${slots.map((s) => btn(`data-do="einplanenZiel" data-id="${esc(id)}" data-datum="${s.datum}" data-uhrzeit="${s.uhrzeit}" data-dauer="${dauer}"`,
+          `${kurzDatum(s.datum)} ${s.uhrzeit}`, "mini")).join("")}</div>`
+        : leer(`Bis zum Stichtag ist kein Fenster von ${dauer} Minuten frei. Kürzere Dauer wählen oder erst etwas verschieben.`)}`);
+  }
+
+  function blattPlanwahl() {
+    const ids = planIds(), frei = PLAN_MAX - ids.length;
+    const A = aufgaben().filter((t) => !ids.includes(t.id))
+      .sort((a, b) => (a.tage ?? 999) - (b.tage ?? 999)).slice(0, 12);
+    blattZeigen(`<h3>Drei für heute</h3>
+      <p>${frei > 0 ? `Noch ${frei} ${frei === 1 ? "Platz" : "Plätze"} frei. Drei ist das Maximum — was nicht draufpasst, bleibt still in der Liste.`
+        : "Alle drei Plätze sind belegt. Nimm erst einen heraus."}</p>
+      ${frei > 0 && A.length ? `<div class="waehler">${A.map((t) => `<button type="button" data-do="planwaehle" data-id="${esc(t.id)}">
+        <span>${esc(kurz(t.titel, 64))}</span><small>${esc(t.tage == null ? "ohne Datum" : rel(t.tage))}</small></button>`).join("")}</div>`
+        : frei > 0 ? leer("Keine offenen Aufgaben.") : ""}`);
+  }
+
+  // ---------------------------------------------------------------- Erinnerungstafel
+  const tafelEl = $("#tafel"), tafelKarte = $("#tafelKarte");
+  let tafelSitzung = false, tafelBekannt = null, tafelAktiv = null;
+
+  function tafelSchluessel(x) { return x.art + ":" + x.id; }
+  function tafelKandidaten() {
+    const gesehen = gesehenHeute(), jetztMin = minuten(berlin().time);
+    const A = aufgaben(), T = termine(), pool = [];
+    for (const id of planIds()) { const t = A.find((x) => x.id === id); if (t) pool.push({ ...t, grund: "aus Deinem Tagesplan" }); }
+    for (const t of A.filter((x) => x.tage != null && x.tage < 0).sort((a, b) => a.tage - b.tage)) pool.push({ ...t, grund: rel(t.tage) });
+    for (const t of A.filter((x) => x.tage === 0)) pool.push({ ...t, grund: "heute fällig" });
+    for (const e of T.filter((x) => x.tage === 0 && x.uhrzeit && minuten(x.uhrzeit) >= jetztMin))
+      pool.push({ ...e, grund: `heute ${e.uhrzeit}` });
+    for (const w of warnungen()) pool.push({ art: "warnung", id: w.id, titel: w.titel, detail: w.detail, rat: w.rat, grund: "vom Rechner" });
+    const raus = [], gab = new Set();
+    for (const p of pool) {
+      const k = tafelSchluessel(p);
+      if (gab.has(k) || gesehen.includes(k)) continue;
+      gab.add(k); raus.push(p);
+      if (raus.length >= TAFEL_MAX) break;
+    }
+    return raus;
+  }
+  const brauchtPlanung = () => S.db && !!S.projekt && planIds().length === 0
+    && minuten(berlin().time) < 14 * 60 && aufgaben().length > 0;
+
+  function tafelZeichnen() {
+    if (tafelAktiv?.modus === "planung") {
+      const A = aufgaben().sort((a, b) => (a.tage ?? 999) - (b.tage ?? 999)).slice(0, 8);
+      tafelKarte.innerHTML = `<div class="tafel-kopf">
+          <h2 id="tafelTitel">Guten Morgen. Wähle drei Dinge für heute.</h2>
+          <p>Nur die kommen später auf diese Tafel. Alles andere bleibt still in der Liste.</p></div>
+        <div class="waehler">${A.map((t) => `<button type="button" data-do="planwaehle" data-tafel="1" data-id="${esc(t.id)}">
+          <span>${esc(kurz(t.titel, 60))}</span><small>${esc(t.tage == null ? "ohne Datum" : rel(t.tage))}</small></button>`).join("")}</div>
+        <div class="tafel-fuss">${btn(`data-do="ruhe" data-min="240"`, "Ruhe bis mittags", "mini still")}
+          <span class="weg">${btn(`data-do="tafelZu"`, "Später", "mini")}</span></div>`;
+      return;
+    }
+    const karten = tafelAktiv?.karten || [];
+    if (!karten.length) return tafelSchliessen();
+    const wort = karten.length === 1 ? "Eine Sache" : karten.length === 2 ? "Zwei Dinge" : "Drei Dinge";
+    tafelKarte.innerHTML = `<div class="tafel-kopf">
+        <h2 id="tafelTitel">${wort} für heute.</h2>
+        <p>Erledigt, später oder einfach zur Kenntnis — jede Karte hat einen Ausgang.</p></div>
+      <div class="karten">${karten.map((k) => `<div class="karte${k.art === "warnung" || (k.tage != null && k.tage < 0) ? " alarm" : ""}">
+        <h3>${esc(kurz(k.titel, 80))}</h3>
+        <div class="wann">${esc([k.grund, k.art === "aufgabe" ? k.sektion?.name : k.art === "warnung" ? k.detail : k.teil].filter(Boolean).join(" · "))}</div>
+        <div class="aus">
+          ${k.art === "aufgabe" && S.mcp ? btn(`data-do="erledigt" data-tafel="1" data-art="aufgabe" data-id="${esc(k.id)}"`, "Erledigt", "mini primary") : ""}
+          ${k.art !== "warnung" && S.mcp && spaeterZiele(k).length ? btn(`data-do="spaeterTafel" data-art="${k.art}" data-id="${esc(k.id)}"`, "Später", "mini") : ""}
+          ${btn(`data-do="passt" data-tafel="1" data-art="${k.art}" data-id="${esc(k.id)}"`, "Passt", "mini still")}
+        </div>
+        ${k.offen ? `<div class="spaeter"><span class="spaeter-kopf">Verschieben auf</span>
+          ${spaeterZiele(k).map((o) => btn(`data-do="spaeterZiel" data-tafel="1" data-art="${k.art}" data-id="${esc(k.id)}" data-datum="${o.datum}" data-uhrzeit="${o.uhrzeit || ""}"`,
+            `${o.label} · ${zielWort(o)}`, "mini")).join("")}</div>` : ""}
+      </div>`).join("")}</div>
+      <div class="tafel-fuss">
+        ${btn(`data-do="ruhe" data-min="240"`, "Ruhe 4 Std", "mini still")}
+        ${btn(`data-do="ruhe" data-min="morgen"`, "Ruhe bis morgen", "mini still")}
+        <span class="weg">${btn(`data-do="tafelZu"`, "Schließen", "mini")}</span></div>`;
+  }
+
+  let vorherFokus = null;
+  function tafelOeffnen(modus, karten) {
+    tafelAktiv = { modus, karten: karten || [] };
+    vorherFokus = document.activeElement;
+    tafelZeichnen();
+    tafelEl.hidden = false;
+    tafelSitzung = true;
+    const erste = tafelKarte.querySelector("button");
+    if (erste) erste.focus();
+    tafelMerken({ letzteTafel: new Date().toISOString() });
+  }
+  function tafelSchliessen() {
+    tafelEl.hidden = true; tafelAktiv = null;
+    if (vorherFokus && document.contains(vorherFokus)) vorherFokus.focus();
+  }
+  tafelEl.addEventListener("click", (ev) => { if (ev.target === tafelEl) tafelSchliessen(); });
+
+  function tafelPruefen(anlass) {
+    if (!tafelEl.hidden || istStumm() || !S.caps) return;
+    const h = heute();
+    if (anlass === "start") {
+      if (tafelSitzung) return;
+      const l = S.tafelStand?.letzteTafel;
+      if (l && Date.now() - Date.parse(l) < TAFEL_PAUSE_MIN * 60000) return;
+    }
+    if (anlass.startsWith("zeit:")) {
+      const slot = anlass.slice(5);
+      if ((S.tafelStand?.slots || {})[slot] === h) return;
+      tafelMerken({ slots: { ...(S.tafelStand?.slots || {}), [slot]: h } });
+    }
+    if (brauchtPlanung() && (anlass === "start" || anlass === "zeit:08:30")) return tafelOeffnen("planung");
+    const k = tafelKandidaten();
+    if (k.length) tafelOeffnen("karten", k);
+  }
+
+  // Schwellen: ein Eintrag wird heute fällig oder überfällig, während die Seite offen ist.
+  function schwellenPruefen() {
+    const jetzt = new Set(tafelKandidaten().map(tafelSchluessel));
+    if (tafelBekannt === null) { tafelBekannt = jetzt; return; }
+    const neu = [...jetzt].filter((k) => !tafelBekannt.has(k));
+    tafelBekannt = jetzt;
+    if (neu.length && tafelEl.hidden) tafelPruefen("schwelle");
+  }
+
+  setInterval(() => {
+    const jetztMin = minuten(berlin().time), h = heute();
+    const faellig = TAFEL_ZEITEN.find((z) => jetztMin >= minuten(z) && (S.tafelStand?.slots || {})[z] !== h);
+    if (faellig) tafelPruefen("zeit:" + faellig);
+    else schwellenPruefen();
+    if (blick === "puls") renderPuls();
+    renderStatus();
+  }, 60000);
+
+  async function ruheSetzen(min) {
+    const bis = min === "morgen"
+      ? new Date(Date.parse(`${isoTag(tagNr(heute()) + 1)}T06:00:00${offsetFuer(isoTag(tagNr(heute()) + 1))}`)).toISOString()
+      : new Date(Date.now() + (+min) * 60000).toISOString();
+    await tafelMerken({ stumm_bis: bis });
+    tafelSchliessen();
+    toast(`Ruhe bis ${stempel(bis)}. Die Tafel meldet sich vorher nicht.`);
+    renderStatus();
+  }
+
+  // ---------------------------------------------------------------- Schnelleintrag ohne KI
+  const WOCHENTAG = { so: 0, son: 0, sonntag: 0, mo: 1, mon: 1, montag: 1, di: 2, die: 2, dienstag: 2,
+    mi: 3, mit: 3, mittwoch: 3, do: 4, don: 4, donnerstag: 4, fr: 5, fre: 5, freitag: 5,
+    sa: 6, sam: 6, samstag: 6, sonnabend: 6 };
+  const RELATIV = { heute: 0, morgen: 1, "übermorgen": 2, uebermorgen: 2 };
+
+  function parseKurz(text) {
+    let t = " " + text.trim().replace(/\s+/g, " ") + " ";
+    let prio = null, fach = null, dauer = null, datum = null, uhrzeit = null, hatDatumWort = false;
+
+    if (/\s!!\s/.test(t)) { prio = "p1"; t = t.replace(/\s!!\s/, " "); }
+    else if (/\s!\s/.test(t)) { prio = "p2"; t = t.replace(/\s!\s/, " "); }
+
+    t = t.replace(/\s#([\p{L}\d][\p{L}\d-]*)/u, (m, name) => {
+      const norm = (s) => s.toLowerCase().replace(/[^\p{L}\d]/gu, "");
+      const s = sektionen().find((x) => norm(x.name).startsWith(norm(name)));
+      if (s) { fach = s; return " "; }
+      return m;
+    });
+
+    t = t.replace(/\s(\d{1,3})(?:[.,](\d))?\s?(minuten|min|std|stunden|stunde|h|m)(?=\s)/iu, (m, a, b, e) => {
+      const v = parseFloat(a + (b ? "." + b : ""));
+      dauer = /^(h|std|stunde)/i.test(e) ? Math.round(v * 60) : Math.round(v);
+      return " ";
+    });
+
+    // Datum: nächste Woche, relative Wörter, Wochentag, TT.MM.
+    t = t.replace(/\s(n(?:ä|ae)chste[nr]?\s+woche)(?=\s)/iu, () => { datum = naechsterWochentag(1); hatDatumWort = true; return " "; });
+    if (!datum) t = t.replace(/\s(heute|morgen|(?:ü|ue)bermorgen)(?=\s)/iu, (m, w) => {
+      datum = isoTag(tagNr(heute()) + RELATIV[w.toLowerCase().replace("ü", "ue")]); hatDatumWort = true; return " "; });
+    if (!datum) t = t.replace(/\s(\d{1,2})\.(\d{1,2})\.?(\d{2,4})?(?=\s)/u, (m, d, mo, j) => {
+      const jahr = j ? (j.length === 2 ? 2000 + +j : +j) : null;
+      const kand = `${jahr || +heute().slice(0, 4)}-${String(+mo).padStart(2, "0")}-${String(+d).padStart(2, "0")}`;
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(kand) || +mo > 12 || +d > 31) return m;
+      datum = !jahr && tageBis(kand) < -14 ? `${+heute().slice(0, 4) + 1}-${String(+mo).padStart(2, "0")}-${String(+d).padStart(2, "0")}` : kand;
+      hatDatumWort = true; return " "; });
+    if (!datum) t = t.replace(/\s(?:am\s)?(\p{L}{2,11})(?=\s)/gu, (m, w) => {
+      if (datum) return m;
+      const n = WOCHENTAG[w.toLowerCase().replace(/\.$/, "")];
+      if (n == null) return m;
+      datum = naechsterWochentag(n); hatDatumWort = true; return " "; });
+
+    // Uhrzeit: 14:30 · um 14 · 14 Uhr · bei erkanntem Datum auch eine blanke Zahl
+    t = t.replace(/\s(?:um\s)?(\d{1,2}):(\d{2})(?:\s?uhr)?(?=\s)/iu, (m, h, mi) => {
+      if (+h > 23 || +mi > 59) return m;
+      uhrzeit = `${String(+h).padStart(2, "0")}:${mi}`; return " "; });
+    if (!uhrzeit) t = t.replace(/\s(?:um\s)?(\d{1,2})\s?uhr(?=\s)/iu, (m, h) => {
+      if (+h > 23) return m;
+      uhrzeit = `${String(+h).padStart(2, "0")}:00`; return " "; });
+    if (!uhrzeit) t = t.replace(/\sum\s(\d{1,2})(?=\s)/iu, (m, h) => {
+      if (+h > 23) return m;
+      uhrzeit = `${String(+h).padStart(2, "0")}:00`; return " "; });
+    if (!uhrzeit && hatDatumWort) t = t.replace(/\s(\d{1,2})(?=\s)/u, (m, h) => {
+      if (+h > 23) return m;
+      uhrzeit = `${String(+h).padStart(2, "0")}:00`; return " "; });
+
+    const titel = t.replace(/\s+(bis|am|um|ab)\s*$/iu, " ").trim().replace(/\s+/g, " ");
+    if (!titel || (!datum && !uhrzeit)) return null;
+    const aufgabeWort = /\b(abgabe|abgeben|bis|erledigen|anrufen|schreiben|lernen|(ü|ue)bungsblatt)\b/iu.test(text);
+    const art = uhrzeit && !aufgabeWort ? "termin" : "aufgabe";
+    return { art, titel, datum: datum || heute(), uhrzeit, dauerMin: dauer || 60, fach: fach?.name || null,
+      labels: [], prio, hinweis: null };
+  }
+
+  const istFrage = (s) => /\?\s*$/.test(s) ||
+    /^(was|wann|wie|warum|wieso|welche|welcher|wer|wo|gibt|habe|hab|kann|soll|zeig|erklär|erklaer)\b/iu.test(s.trim());
+  const mehrteilig = (s) => /,|\bund\b/iu.test(s) && s.trim().split(/\s+/).length > 4;
+
+  // ---------------------------------------------------------------- Eingabefeld
+  const form = $("#ask"), feld = $("#askInput"), antwort = $("#antwort");
+  let fragenCtl = null, entwurf = null, aktionEntwurf = null;
+  const zuKnopf = `<button type="button" class="x" data-do="antwortZu" aria-label="Schließen">×</button>`;
+  const zeigeAntwort = (html) => { antwort.innerHTML = html; antwort.hidden = false; antwort.scrollTop = 0; };
+  const antwortZu = () => { antwort.hidden = true; antwort.innerHTML = ""; entwurf = null; aktionEntwurf = null; };
+
+  function zeigeEntwurf(e) {
+    entwurf = e;
+    const sek = sektionen();
+    zeigeAntwort(`<p class="lead">${esc(e.art === "termin" ? "Termin verstanden" : "Aufgabe verstanden")} — prüf kurz, dann anlegen.</p>
+      <div class="felder">
+        <div class="feld"><label for="eTitel">Titel</label><input id="eTitel" value="${esc(e.titel)}"></div>
+        <div class="feld-reihe">
+          <div class="feld"><label for="eArt">Art</label><select id="eArt">
+            <option value="aufgabe"${e.art === "aufgabe" ? " selected" : ""}>Aufgabe · Todoist</option>
+            <option value="termin"${e.art === "termin" ? " selected" : ""}>Termin · Kalender</option></select></div>
+          <div class="feld"><label for="eDatum">Datum</label><input id="eDatum" type="date" value="${esc(e.datum || "")}"></div>
+        </div>
+        <div class="feld-reihe">
+          <div class="feld"><label for="eZeit">Uhrzeit</label><input id="eZeit" type="time" value="${esc(e.uhrzeit || "")}"></div>
+          <div class="feld"><label for="eDauer">Dauer (Min)</label><input id="eDauer" type="number" min="5" max="720" step="5" value="${e.dauerMin || 60}"></div>
+        </div>
+        <div class="feld"><label for="eFach">Fach</label><select id="eFach">
+          <option value="">ohne Fach · Inbox</option>
+          ${sek.map((s) => `<option value="${esc(s.name)}"${e.fach === s.name ? " selected" : ""}>${esc(s.name)}</option>`).join("")}</select></div>
+      </div>
+      ${e.hinweis ? `<p class="leer">${esc(e.hinweis)}</p>` : ""}
+      <div class="z-a" style="margin:0">
+        ${S.mcp ? btn(`data-do="entwurfAnlegen"`, "Anlegen", "primary") : `<span class="leer">Anlegen geht nur in der Claude-Ansicht.</span>`}
+        ${btn(`data-do="antwortZu"`, "Verwerfen", "still")}</div>${zuKnopf}`);
+  }
+
+  function entwurfLesen() {
+    const g = (id) => $("#" + id)?.value || "";
+    const art = g("eArt") === "termin" ? "termin" : "aufgabe";
+    return { art, titel: g("eTitel").trim().slice(0, 200), datum: /^\d{4}-\d{2}-\d{2}$/.test(g("eDatum")) ? g("eDatum") : null,
+      uhrzeit: /^\d{2}:\d{2}$/.test(g("eZeit")) ? g("eZeit") : null,
+      dauerMin: clamp(Math.round(+g("eDauer") || 60), 5, 720), fach: g("eFach") || null,
+      labels: entwurf?.labels || [], prio: entwurf?.prio || null, hinweis: entwurf?.hinweis || null };
+  }
+
+  function todoistEingabe(p) {
+    const s = p.fach && sektionen().find((x) => x.name === p.fach);
+    const o = { content: p.titel, labels: [...new Set([...(p.labels || []), "auto"])] };
+    if (s) o.sectionId = s.id; else o.projectId = S.projektMeta?.id || "inbox";
+    if (p.datum) o.dueString = p.datum + (p.uhrzeit ? " " + p.uhrzeit : "");
+    if (p.prio) o.priority = p.prio;
+    if (p.hinweis) o.description = p.hinweis;
+    return o;
+  }
+  function kalenderEingabe(p) {
+    const datum = p.datum || heute();
+    if (!p.uhrzeit) return { summary: p.titel, allDay: true, startTime: `${datum}T00:00:00${offsetFuer(datum)}`,
+      endTime: `${isoTag(tagNr(datum) + 1)}T00:00:00${offsetFuer(datum)}`, timeZone: TZ };
+    const endMin = minuten(p.uhrzeit) + p.dauerMin;
+    const endDatum = endMin >= 24 * 60 ? isoTag(tagNr(datum) + 1) : datum;
+    const o = { summary: p.titel, startTime: `${datum}T${p.uhrzeit}:00${offsetFuer(datum)}`,
+      endTime: `${endDatum}T${alsUhr(endMin)}:00${offsetFuer(endDatum)}`, timeZone: TZ };
+    if (p.hinweis) o.description = p.hinweis;
+    return o;
+  }
+
+  async function anlegen(liste) {
+    const fertig = [], schief = [];
+    const aufg = liste.filter((p) => p.art === "aufgabe");
+    if (aufg.length) {
+      try {
+        const res = await tdo("add-tasks", { tasks: aufg.map(todoistEingabe) });
+        const angelegt = (res?.tasks || []).map((t) => t.content);
+        for (const p of aufg) {
+          const i = angelegt.indexOf(p.titel);
+          if (i >= 0) { angelegt.splice(i, 1); fertig.push(p); }
+          else schief.push({ p, warum: "Todoist hat den Eintrag abgelehnt." });
+        }
+      } catch (e) { for (const p of aufg) schief.push({ p, warum: mcpText(e, "Todoist", true) }); }
+    }
+    for (const p of liste.filter((x) => x.art === "termin")) {
+      try { await gcal("create_event", kalenderEingabe(p)); fertig.push(p); }
+      catch (e) { schief.push({ p, warum: mcpText(e, "Google Kalender", true) }); }
+    }
+    const nT = fertig.filter((p) => p.art === "aufgabe").length, nE = fertig.length - nT;
+    const wann = (p) => `${p.datum ? (tageBis(p.datum) === 0 ? "heute" : tageBis(p.datum) === 1 ? "morgen" : kurzDatum(p.datum)) : "ohne Datum"}${p.uhrzeit ? " " + p.uhrzeit : ""}`;
+    zeigeAntwort(`<p>${fertig.length
+      ? `Angelegt: ${[nE ? `${nE} ${nE === 1 ? "Termin" : "Termine"}` : "", nT ? `${nT} ${nT === 1 ? "Aufgabe" : "Aufgaben"}` : ""].filter(Boolean).join(" und ")}.`
+      : "Nichts angelegt."}</p>
+      <ul class="ergebnis">${fertig.map((p) => `<li><span class="ja">✓</span><span>${esc(p.titel)} · ${esc(wann(p))}</span></li>`).join("")}
+      ${schief.map((f) => `<li><span class="nein">!</span><span>${esc(f.p.titel)}: ${esc(f.warum)}</span></li>`).join("")}</ul>${zuKnopf}`);
+    if (nT) { frischT(); funke("todoist"); }
+    if (nE) { frischK(); funke("kalender"); }
+    if (S.db && fertig.length) {
+      const am = new Date().toISOString();
+      S.db.doc("journal/intake").set({ eintraege: [
+        ...fertig.map((p) => ({ art: p.art, titel: p.titel, datum: p.datum, uhrzeit: p.uhrzeit, fach: p.fach, am })),
+        ...S.journal].slice(0, 30) }).catch(() => {});
+    }
+    entwurf = null;
+  }
+
+  // ---------------------------------------------------------------- Claude fragen (mit Budget)
+  function promptBauen(q) {
+    const n = berlin();
+    const wd = new Intl.DateTimeFormat("de-DE", { weekday: "long", timeZone: TZ }).format(new Date());
+    const L = [];
+    L.push("Du bist das Semester-Cortex: das Assistenz-Gehirn eines Studenten (FOM). Du kennst sein Studium, seine Termine und die Datei-Automation auf seinem Rechner. Sprich ihn mit du an.");
+    L.push(`Jetzt: ${wd}, ${n.date}, ${n.time} Uhr (Europe/Berlin).`, "", "EINGABE:", q.slice(0, 1200), "");
+    L.push('Entscheide den typ: "frage" = er will eine Auskunft. "eintrag" = er zählt Dinge auf, die angelegt werden sollen. "aktion" = er will bestehende Einträge erledigen, verschieben oder als wiederholt markieren.', "");
+    L.push("FÄCHER (exakte Namen):", ...sektionen().map((s) => "- " + s.name), "");
+    const A = aufgaben().sort((a, b) => (a.tage ?? 999) - (b.tage ?? 999)).slice(0, 30);
+    L.push("OFFENE AUFGABEN (id | titel | fällig | fach):",
+      ...A.map((t) => `- ${t.id} | ${kurz(t.titel, 70)} | ${t.datum ? t.datum + (t.uhrzeit ? " " + t.uhrzeit : "") : "ohne Datum"} | ${t.sektion?.name || "-"}`), "");
+    const T = termine().slice(0, 15);
+    L.push("TERMINE (id | datum | zeit | titel):",
+      ...T.map((e) => `- ${e.id} | ${e.datum} | ${e.uhrzeit || "ganztägig"} | ${kurz(e.titel, 50)}`), "");
+    const TH = themenAktiv().slice(0, 20);
+    if (TH.length) L.push("LERNTHEMEN (id | thema | fällig am):", ...TH.map((t) => `- ${t.id} | ${t.name} | ${t.faellig}`), "");
+    if (S.zustand) {
+      L.push("RECHNER:", `- Stand ${S.zustand.stand}`,
+        `- Downloads: ${S.zustand.downloads?.dateien ?? "?"} Dateien`,
+        ...warnungen().slice(0, 4).map((w) => `- Warnung: ${w.titel} (${w.detail || ""})`), "");
+    }
+    L.push("ANTWORTE MIT GENAU EINEM JSON-OBJEKT, ohne weiteren Text.",
+      '"frage": {"typ":"frage","antwort":"höchstens 3 kurze Sätze auf Deutsch","refs":[{"art":"aufgabe|termin|thema|organ","id":"..."}]}',
+      '"eintrag": {"typ":"eintrag","antwort":"ein kurzer Satz","vorschlaege":[{"art":"termin|aufgabe","titel":"kurz","fach":null,"datum":"YYYY-MM-DD","uhrzeit":"HH:MM","dauerMin":60,"labels":[],"unsicher":false,"hinweis":null}]}',
+      '"aktion": {"typ":"aktion","antwort":"ein kurzer Satz","op":"erledigt|verschieben|wiederholt","ziele":[{"art":"aufgabe|termin|thema","id":"..."}],"datum":"YYYY-MM-DD","uhrzeit":null}',
+      "REGELN:",
+      '- "termin" ist etwas mit fester Zeit, zu dem man irgendwo sein muss. "aufgabe" ist etwas zu erledigen, auch mit Frist. Anrufe und Nachrichten sind Aufgaben.',
+      '- Relative Angaben ("Freitag", "morgen", "nächste Woche") in ein konkretes Datum ab heute umrechnen.',
+      '- Unklare Zeiten ("nachmittags"): wähle eine freie Lücke laut TERMINE, setze "unsicher": true und begründe im "hinweis" in einem Satz.',
+      '- "fach" nur bei eindeutiger Zuordnung, mit exaktem Namen aus FÄCHER. Sonst null.',
+      `- "labels" nur aus: ${LABELS_ERLAUBT.join(", ")}. Leere Liste erlaubt.`,
+      '- Bei "aktion" und "refs" nur ids aus den Listen oben verwenden. Nichts erfinden.',
+      '- Gibt die Datenlage etwas nicht her, sag das in "antwort" statt zu raten.');
+    return L.join("\n").slice(0, 9000);
+  }
+
+  function normVorschlag(p) {
+    if (!p || typeof p !== "object") return null;
+    const titel = String(p.titel || "").trim().slice(0, 200);
+    if (!titel) return null;
+    const namen = sektionen().map((s) => s.name);
+    return { art: p.art === "termin" ? "termin" : "aufgabe", titel,
+      fach: namen.includes(p.fach) ? p.fach : null,
+      datum: /^\d{4}-\d{2}-\d{2}$/.test(p.datum || "") ? p.datum : null,
+      uhrzeit: /^\d{2}:\d{2}$/.test(p.uhrzeit || "") ? p.uhrzeit : null,
+      dauerMin: clamp(Math.round(Number(p.dauerMin) || 60), 5, 720),
+      labels: (Array.isArray(p.labels) ? p.labels : []).filter((l) => LABELS_ERLAUBT.includes(l)),
+      prio: null, unsicher: !!p.unsicher, hinweis: p.hinweis ? String(p.hinweis).slice(0, 240) : null };
+  }
+
+  let vorschlagListe = [];
+  const anzahlWort = (n) => n === 0 ? "Nichts ausgewählt" : n === 1 ? "1 Eintrag anlegen" : `${n} Einträge anlegen`;
+  function zeigeVorschlaege(lead) {
+    const meta = (p) => [p.unsicher ? "Vorschlag: " + (p.datum ? kurzDatum(p.datum) : "ohne Datum") : (p.datum ? kurzDatum(p.datum) : "ohne Datum"),
+      p.uhrzeit || "", p.art === "termin" && p.uhrzeit ? p.dauerMin + " Min" : "",
+      p.art === "aufgabe" ? (p.fach || "Inbox") : "Kalender", (p.labels || []).join(" ")].filter(Boolean).join(" · ");
+    zeigeAntwort(`<p class="lead">${esc(lead || "Das habe ich verstanden:")}</p>
+      <ul class="vorschlaege">${vorschlagListe.map((p, i) => `<li><label><input type="checkbox" data-i="${i}" checked>
+        <span class="v-art ${p.art}">${p.art === "termin" ? "Termin" : "Aufgabe"}</span>
+        <span>${esc(p.titel)}</span><span class="v-m">${esc(meta(p))}</span></label>
+        ${p.hinweis ? `<em class="v-h">${esc(p.hinweis)}</em>` : ""}</li>`).join("")}</ul>
+      <div class="z-a" style="margin:0">
+        ${S.mcp ? btn(`data-do="vorschlaegeAnlegen"`, anzahlWort(vorschlagListe.length), "primary")
+          : `<span class="leer">Anlegen geht nur in der Claude-Ansicht.</span>`}
+        ${btn(`data-do="antwortZu"`, "Verwerfen", "still")}</div>${zuKnopf}`);
+    funke("du");
+  }
+  antwort.addEventListener("change", () => {
+    const b = antwort.querySelector('[data-do="vorschlaegeAnlegen"]');
+    if (!b) return;
+    const n = antwort.querySelectorAll("input[data-i]:checked").length;
+    b.textContent = anzahlWort(n); b.disabled = n === 0;
+  });
+
+  function zeigeAktion(r) {
+    const ziele = (Array.isArray(r.ziele) ? r.ziele : []).map((z) => findeSache(z.art, z.id)).filter(Boolean);
+    if (!ziele.length) return zeigeAntwort(`<p>${esc(r.antwort || "Dazu habe ich keinen passenden Eintrag gefunden.")}</p>${zuKnopf}`);
+    const op = ["erledigt", "verschieben", "wiederholt"].includes(r.op) ? r.op : null;
+    if (!op) return zeigeAntwort(`<p>${esc(r.antwort || "Das habe ich nicht eindeutig verstanden.")}</p>${zuKnopf}`);
+    const datum = /^\d{4}-\d{2}-\d{2}$/.test(r.datum || "") ? r.datum : null;
+    const uhrzeit = /^\d{2}:\d{2}$/.test(r.uhrzeit || "") ? r.uhrzeit : null;
+    if (op === "verschieben" && !datum) return zeigeAntwort(`<p>Auf welches Datum soll ich verschieben?</p>${zuKnopf}`);
+    aktionEntwurf = { op, ziele, datum, uhrzeit };
+    const wort = op === "erledigt" ? "abhaken" : op === "verschieben" ? `auf ${kurzDatum(datum)}${uhrzeit ? ", " + uhrzeit : ""} verschieben` : "als wiederholt markieren";
+    zeigeAntwort(`<p class="lead">${esc(r.antwort || "")}</p>
+      <p>Soll ich ${ziele.length === 1 ? "das" : `diese ${ziele.length}`} ${wort}?</p>
+      <ul class="ergebnis">${ziele.map((z) => `<li><span>·</span><span>${esc(kurz(z.titel || z.name, 70))}</span></li>`).join("")}</ul>
+      <div class="z-a" style="margin:0">${btn(`data-do="aktionAusfuehren"`, "Ja, machen", "primary")}
+        ${btn(`data-do="antwortZu"`, "Nein", "still")}</div>${zuKnopf}`);
+  }
+
+  async function aktionAusfuehren() {
+    const a = aktionEntwurf;
+    if (!a) return;
+    aktionEntwurf = null;
+    let n = 0;
+    for (const z of a.ziele) {
+      if (a.op === "erledigt" && z.art === "aufgabe") n += (await erledigen(z)) ? 1 : 0;
+      else if (a.op === "verschieben") n += (await verschieben(z, { datum: a.datum, uhrzeit: a.uhrzeit })) ? 1 : 0;
+      else if (a.op === "wiederholt" && z.name) n += (await wiederholen(z, "wiederholt")) ? 1 : 0;
+    }
+    zeigeAntwort(`<p>${n ? `${n} von ${a.ziele.length} erledigt.` : "Nichts geändert."} Einzelne Schritte kannst Du unten im Hinweis zurücknehmen.</p>${zuKnopf}`);
+  }
+
+  function verarbeiteAntwort(r) {
+    if (!r || typeof r !== "object") return zeigeAntwort(`<p>${esc(sampleText({ code: "invalid_json" }))}</p>${zuKnopf}`);
+    if (r.typ === "aktion") return zeigeAktion(r);
+    if (r.typ === "eintrag" && Array.isArray(r.vorschlaege)) {
+      vorschlagListe = r.vorschlaege.slice(0, 12).map(normVorschlag).filter(Boolean);
+      if (vorschlagListe.length === 1) return zeigeEntwurf({ ...vorschlagListe[0] });
+      if (vorschlagListe.length) return zeigeVorschlaege(r.antwort);
+    }
+    const refs = (Array.isArray(r.refs) ? r.refs : []).map((z) => ({ z, s: findeSache(z.art, z.id) || (z.art === "organ" ? organById[z.id] : null) }))
+      .filter((x) => x.s).slice(0, 6);
+    zeigeAntwort(`<p>${esc(r.antwort || "Dazu habe ich nichts gefunden.")}</p>
+      ${refs.length ? `<div class="refs">${refs.map(({ z, s }) => {
+        const farbe = z.art === "organ" ? s.farbe : "var(--synapse)";
+        return `<button type="button" class="ref" data-do="${z.art === "organ" ? "organ" : "blatt"}" data-art="${esc(z.art)}" data-id="${esc(z.id)}" style="--c:${farbe}"><i></i>${esc(kurz(s.titel || s.name, 34))}</button>`;
+      }).join("")}</div>` : ""}${zuKnopf}`);
+    funke("du");
+  }
+
+  async function claudeFragen(q) {
+    if (!S.sample) return zeigeAntwort(`<p>Claude ist für diese Seite nicht freigegeben. Kurzschrift wie „Zahnarzt Fr 14“ funktioniert weiter.</p>${zuKnopf}`);
+    fragenCtl?.abort();
+    const ctl = (fragenCtl = new AbortController());
+    denkt = true;
+    zeigeAntwort(`<div class="denkt"><span class="spark"></span>Denkt nach …</div>
+      <div class="z-a" style="margin:0">${btn(`data-do="stopp"`, "Stopp", "mini still")}</div>`);
+    funke("du");
+    try {
+      const r = await S.sample.json(promptBauen(q), { signal: ctl.signal, cache: false });
+      if (ctl !== fragenCtl) return;
+      feld.value = "";
+      verarbeiteAntwort(r);
+    } catch (e) {
+      if (ctl !== fragenCtl || e?.code === "cancelled") return;
+      zeigeAntwort(`<p>${esc(sampleText(e))}</p>${zuKnopf}`);
+    } finally { if (ctl === fragenCtl) denkt = false; }
+  }
+
+  form.addEventListener("submit", (ev) => {
+    ev.preventDefault();
+    const q = feld.value.trim();
+    if (!q) return;
+    if (istFrage(q)) return claudeFragen(q);
+    const kurzParse = mehrteilig(q) ? null : parseKurz(q);
+    if (kurzParse) { feld.value = ""; return zeigeEntwurf(kurzParse); }
+    claudeFragen(q);
+  });
+
+  // ---------------------------------------------------------------- Handlungen
+  async function vorschlagEntscheiden(id, status) {
+    if (!S.db) return;
+    try {
+      await S.db.doc("vorschlaege/" + id).update({ status, entschieden: new Date().toISOString() });
+      toast(status === "angenommen" ? "Vorgemerkt. Umgesetzt wird, sobald Du es im Chat anstößt." : "Verworfen.");
+    } catch (e) { toast(dbText(e)); }
+  }
+
+  document.addEventListener("click", async (ev) => {
+    const el = ev.target.closest("[data-do]");
+    if (!el) return;
+    const d = el.dataset, tafelHier = d.tafel === "1";
+
+    const nachTafelAktion = (schluessel) => {
+      if (!tafelHier || !tafelAktiv) return;
+      tafelAktiv.karten = (tafelAktiv.karten || []).filter((k) => tafelSchluessel(k) !== schluessel);
+      if (!tafelAktiv.karten.length && tafelAktiv.modus !== "planung") tafelSchliessen(); else tafelZeichnen();
+    };
+
+    switch (d.do) {
+      case "blatt": blattSache(d.art, d.id); break;
+      case "organ": blattOrgan(d.id); if (typeof auswahlSetzen === "function") auswahlSetzen(d.id); break;
+      case "zu": blattZu(); break;
+      case "antwortZu": antwortZu(); break;
+      case "stopp": fragenCtl?.abort(); antwortZu(); break;
+      case "blick": blickSetzen(d.blick); break;
+      case "tafelZu": tafelSchliessen(); break;
+      case "ruhe": ruheSetzen(d.min); break;
+
+      case "erledigt": {
+        const t = findeSache("aufgabe", d.id);
+        if (!t) break;
+        el.disabled = true;
+        if (await erledigen(t)) nachTafelAktion("aufgabe:" + d.id);
+        else el.disabled = false;
+        break;
+      }
+      case "spaeter": blattSpaeter(d.art, d.id); break;
+      case "spaeterTafel": {
+        if (!tafelAktiv) break;
+        for (const k of tafelAktiv.karten) if (tafelSchluessel(k) === d.art + ":" + d.id) k.offen = !k.offen;
+        tafelZeichnen();
+        break;
+      }
+      case "spaeterZiel": {
+        const x = findeSache(d.art, d.id);
+        if (!x) break;
+        el.disabled = true;
+        const ok = await verschieben(x, { datum: d.datum, uhrzeit: d.uhrzeit || null });
+        if (ok) { blattZu(); nachTafelAktion(d.art + ":" + d.id); } else el.disabled = false;
+        break;
+      }
+      case "einplanen": blattEinplanen(d.id); break;
+      case "einplanenDauer": blattEinplanen(d.id, +d.dauer); break;
+      case "einplanenZiel": {
+        const t = findeSache("aufgabe", d.id);
+        if (!t) break;
+        el.disabled = true;
+        if (await einplanen(t, { datum: d.datum, uhrzeit: d.uhrzeit }, +d.dauer)) blattZu();
+        else el.disabled = false;
+        break;
+      }
+      case "wiederholt": case "morgen": case "sitzt": {
+        const t = findeSache("thema", d.id);
+        if (!t) break;
+        el.disabled = true;
+        if (!(await wiederholen(t, d.do))) el.disabled = false;
+        break;
+      }
+      case "plan": {
+        const ids = planIds();
+        if (ids.includes(d.id)) await planSetzen(ids.filter((x) => x !== d.id));
+        else if (ids.length >= PLAN_MAX) toast(`Drei ist das Maximum. Nimm erst einen heraus.`);
+        else await planSetzen([...ids, d.id]);
+        break;
+      }
+      case "planwahl": blattPlanwahl(); break;
+      case "planweg": await planSetzen(planIds().filter((x) => x !== d.id)); break;
+      case "planwaehle": {
+        const ids = planIds();
+        if (ids.length >= PLAN_MAX) { toast("Drei ist das Maximum."); break; }
+        await planSetzen([...ids, d.id]);
+        if (tafelHier) { if (planIds().length >= PLAN_MAX) tafelSchliessen(); else tafelZeichnen(); }
+        else blattPlanwahl();
+        break;
+      }
+      case "passt": {
+        await tafelMerken({ gesehenZusatz: [d.art + ":" + d.id] });
+        nachTafelAktion(d.art + ":" + d.id);
+        if (!tafelHier) { blattZu(); toast("Gesehen. Heute meldet sich das nicht mehr."); }
+        break;
+      }
+      case "vorschlag": el.disabled = true; await vorschlagEntscheiden(d.id, d.status); break;
+      case "entwurfAnlegen": {
+        const p = entwurfLesen();
+        if (!p.titel) { toast("Ohne Titel geht es nicht."); break; }
+        el.disabled = true;
+        await anlegen([p]);
+        break;
+      }
+      case "vorschlaegeAnlegen": {
+        const gewaehlt = vorschlagListe.filter((_, i) => antwort.querySelector(`input[data-i="${i}"]`)?.checked);
+        if (!gewaehlt.length) break;
+        el.disabled = true; el.textContent = "Wird angelegt …";
+        await anlegen(gewaehlt);
+        break;
+      }
+      case "aktionAusfuehren": el.disabled = true; await aktionAusfuehren(); break;
+    }
+  });
+
+  addEventListener("keydown", (e) => {
+    if (e.key !== "Escape") return;
+    if (!tafelEl.hidden) tafelSchliessen();
+    else if (!antwort.hidden) antwortZu();
+    else if (!blatt.hidden) blattZu();
+  });
+  // Fokus bleibt in der Tafel, solange sie offen ist.
+  tafelEl.addEventListener("keydown", (e) => {
+    if (e.key !== "Tab") return;
+    const f = [...tafelKarte.querySelectorAll("button:not([disabled])")];
+    if (!f.length) return;
+    const erste = f[0], letzte = f[f.length - 1];
+    if (e.shiftKey && document.activeElement === erste) { e.preventDefault(); letzte.focus(); }
+    else if (!e.shiftKey && document.activeElement === letzte) { e.preventDefault(); erste.focus(); }
+  });
+
+  // ---------------------------------------------------------------- Blicke
+  const blickeEl = $(".blicke");
+  function blickSetzen(name) {
+    if (!["puls", "bahn", "gehirn"].includes(name)) name = "puls";
+    blick = name;
+    document.body.dataset.blick = name;
+    for (const b of blickeEl.querySelectorAll("button")) b.setAttribute("aria-selected", String(b.dataset.blick === name));
+    const raum = name !== "puls";
+    $("#puls").hidden = raum;
+    $("#canvasLayer").hidden = !raum;
+    $("#organe").hidden = !raum;
+    try { history.replaceState(null, "", "#" + name); } catch (e) { /* egal */ }
+    if (raum) canvasStarten(); else canvasRuhen();
+    if (!raum) renderPuls();
+    renderOrgane();
+  }
+  blickeEl.addEventListener("click", (ev) => {
+    const b = ev.target.closest("[data-blick]");
+    if (b) blickSetzen(b.dataset.blick);
+  });
+
+  // ---------------------------------------------------------------- Neu zeichnen
+  let zeichnenGeplant = false;
+  function neuZeichnen() {
+    if (zeichnenGeplant) return;
+    zeichnenGeplant = true;
+    requestAnimationFrame(() => {
+      zeichnenGeplant = false;
+      renderStatus();
+      renderOrgane();
+      if (blick === "puls") renderPuls();
+      if (blattWas) {
+        if (blattWas.art === "organ") blattOrgan(blattWas.id);
+        else if (findeSache(blattWas.art, blattWas.id)) blattSache(blattWas.art, blattWas.id);
+        else blattZu();
+      }
+      canvasSync();
+      startTafelVielleicht();
+    });
+  }
+  let startTafelGeplant = false;
+  function startTafelVielleicht() {
+    if (tafelSitzung || startTafelGeplant || !S.caps) return;
+    if (S.db && S.tafelStand === null) return;             // erst wissen, ob Ruhe gilt
+    if (!S.projekt && !S.zustand && S.mcp) return;          // erst Daten, dann Tafel
+    startTafelGeplant = true;
+    setTimeout(() => { schwellenPruefen(); tafelPruefen("start"); }, 500);
+  }
+
+  // ---------------------------------------------------------------- Live-Anbindung
+  function watchTodoist() {
+    let projId = null, ab = null;
+    const aufProjekt = (ev) => {
+      if (ev.type === "error") { S.err.todoist = ev.error; if (AUTHZ.has(ev.error.code)) S.projekt = null; }
+      else { S.err.todoist = null; const p = ev.result.payload; S.projekt = typeof p === "string" ? JSON.parse(p) : p; }
+      neuZeichnen();
+    };
+    S.mcp.watchTool("Todoist", "get-overview", {}, (ev) => {
+      if (ev.type === "error") {
+        S.err.todoist = ev.error;
+        if (AUTHZ.has(ev.error.code)) { S.projekt = null; S.projektMeta = null; ab?.(); ab = null; projId = null; }
+        return neuZeichnen();
+      }
+      const p = typeof ev.result.payload === "string" ? JSON.parse(ev.result.payload) : ev.result.payload;
+      const proj = (p?.projects || []).find((x) => PROJEKT.test(x.name));
+      if (!proj) { S.err.todoist = { code: "no_project" }; S.projekt = null; S.projektMeta = null; return neuZeichnen(); }
+      S.projektMeta = proj;
+      if (proj.id !== projId) {
+        ab?.(); projId = proj.id;
+        ab = S.mcp.watchTool("Todoist", "get-overview", { projectId: proj.id }, aufProjekt, { refetchInterval: 120000 });
+      }
+      neuZeichnen();
+    }, { refetchInterval: 900000 });
+  }
+  function watchKalender() {
+    const von = heute(), bis = isoTag(tagNr(von) + BAHN_TAGE + 1), off = offsetFuer(von);
+    S.mcp.watchTool("Google Calendar", "list_events", { startTime: `${von}T00:00:00${off}`,
+      endTime: `${bis}T00:00:00${off}`, orderBy: "startTime", pageSize: 100, timeZone: TZ }, (ev) => {
+      if (ev.type === "error") { S.err.kalender = ev.error; if (AUTHZ.has(ev.error.code)) S.events = null; }
+      else { S.err.kalender = null; const p = ev.result.payload; S.events = (typeof p === "string" ? JSON.parse(p) : p)?.events || []; }
+      neuZeichnen();
+    }, { refetchInterval: 300000 });
+  }
+  function dbAbo() {
+    const aufFehler = (e) => { S.err.db = e; neuZeichnen(); };
+    const d = (pfad, fn) => S.db.doc(pfad).onSnapshot((s) => { S.err.db = null; fn(s.exists ? s.data() : null); neuZeichnen(); }, aufFehler);
+    d("cortex/zustand", (v) => (S.zustand = v));
+    d("cortex/bericht", (v) => (S.bericht = v));
+    d("cortex/tagesplan", (v) => (S.plan = v));
+    d("cortex/tafel", (v) => (S.tafelStand = v || {}));
+    d("journal/intake", (v) => (S.journal = v?.eintraege || []));
+    S.db.collection("themen").onSnapshot((q) => { S.themen = q.docs.map((x) => ({ id: x.id, ...x.data() })); neuZeichnen(); }, aufFehler);
+    S.db.collection("vorschlaege").onSnapshot((q) => { S.vorschlaege = q.docs.map((x) => ({ id: x.id, ...x.data() })); neuZeichnen(); }, aufFehler);
+    S.db.collection("agenten").onSnapshot((q) => { S.agenten = Object.fromEntries(q.docs.map((x) => [x.id, x.data()])); neuZeichnen(); }, aufFehler);
+  }
+
+  // ================================================================ Raum: Gehirn & Bahn
+  // three.js wird erst geladen, wenn Du einen der beiden Blicke öffnest. Der Puls
+  // funktioniert ohne WebGL, ohne CDN und ohne diese 300 Zeilen.
+  let denkt = false;
+  const QUELLEN = [
+    "https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js",
+    "https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js",
+  ];
+  let laedt = false, kaputt = false, R = null, auswahl = null, ueber = null;
+
+  function canvasFehler(text) {
+    kaputt = true;
+    const alt = $(".canvasfail");
+    if (alt) alt.remove();
+    const el = document.createElement("div");
+    el.className = "canvasfail";
+    el.innerHTML = `<p>${esc(text)}</p><div class="z-a" style="margin:0;justify-content:center">
+      ${btn(`data-do="blick" data-blick="puls"`, "Zurück zum Puls", "mini primary")}</div>`;
+    $("#canvasLayer").appendChild(el);
+  }
+  function ladeThree() {
+    return new Promise((ok, nein) => {
+      if (window.THREE) return ok();
+      const versuch = (i) => {
+        if (i >= QUELLEN.length) return nein(new Error("keine Quelle"));
+        const s = document.createElement("script");
+        s.src = QUELLEN[i];
+        const uhr = setTimeout(() => { s.onload = s.onerror = null; versuch(i + 1); }, 8000);
+        s.onload = () => { clearTimeout(uhr); window.THREE ? ok() : versuch(i + 1); };
+        s.onerror = () => { clearTimeout(uhr); versuch(i + 1); };
+        document.head.appendChild(s);
+      };
+      versuch(0);
+    });
+  }
+  function canvasStarten() {
+    if (R) { R.aktiv = true; canvasSync(); return; }
+    if (laedt || kaputt) return;
+    laedt = true;
+    ladeThree().then(() => { laedt = false; bauen(); })
+      .catch(() => { laedt = false; canvasFehler("Die 3D-Bibliothek ließ sich von keiner Quelle laden. Häufige Ursachen: Inhaltsblocker, schwaches Netz oder die App-Vorschau. Der Puls funktioniert davon unabhängig."); });
+  }
+  function canvasRuhen() { if (R) R.aktiv = false; }
+  function auswahlSetzen(id) { auswahl = id; }
+
+  function bauen() {
+    let renderer;
+    try {
+      renderer = new THREE.WebGLRenderer({ canvas: $("#stage"), antialias: !schmal(), powerPreference: "high-performance" });
+    } catch (e) {
+      return canvasFehler("WebGL ist in diesem Browser nicht verfügbar. Öffne den Link in Chrome, Brave oder Safari — oder bleib beim Puls, der braucht es nicht.");
+    }
+    const canvas = $("#stage");
+    renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+    renderer.setClearColor(0x05060a, 1);
+    const scene = new THREE.Scene();
+    scene.fog = new THREE.FogExp2(0x05060a, 0.07);
+    const camera = new THREE.PerspectiveCamera(40, 1, 0.1, 100);
+    const ADD = THREE.AdditiveBlending, WEISS = new THREE.Color("#ffffff");
+
+    const LEUCHTEN = (() => {
+      const c = document.createElement("canvas"); c.width = c.height = 128;
+      const g = c.getContext("2d"), r = g.createRadialGradient(64, 64, 0, 64, 64, 64);
+      r.addColorStop(0, "rgba(255,255,255,1)"); r.addColorStop(.16, "rgba(255,255,255,.9)");
+      r.addColorStop(.4, "rgba(255,255,255,.22)"); r.addColorStop(1, "rgba(255,255,255,0)");
+      g.fillStyle = r; g.fillRect(0, 0, 128, 128);
+      return new THREE.CanvasTexture(c);
+    })();
+    const funkeSprite = (farbe) => new THREE.Sprite(new THREE.SpriteMaterial({ map: LEUCHTEN, color: farbe,
+      transparent: true, depthWrite: false, blending: ADD }));
+
+    // Der Körper: eine Punktwolke in Hirnform.
+    const N = schmal() ? 6000 : 14000;
+    const pos = new Float32Array(N * 3), col = new Float32Array(N * 3);
+    const knochen = new THREE.Color("#E9E3D6"), kuehl = new THREE.Color("#6F86B8"), tmp = new THREE.Color();
+    for (let i = 0; i < N; i++) {
+      const u = Math.random() * 2 - 1, th = Math.random() * Math.PI * 2, s = Math.sqrt(1 - u * u);
+      const dx = s * Math.cos(th), dy = u, dz = s * Math.sin(th);
+      const haut = Math.random() < 0.78;
+      const tief = haut ? 0.94 + Math.random() * 0.06 : Math.pow(Math.random(), 0.6) * 0.9;
+      const teil = Math.random();
+      let x, y, z;
+      if (teil < 0.87) {
+        const h = Math.random() < 0.5 ? -1 : 1;
+        const k = tief * (1 + 0.05 * Math.sin(dx * 13 + dy * 9) * Math.sin(dz * 11 - dy * 6) + 0.025 * Math.sin(dz * 23 + dx * 17));
+        let ox = dx * 0.74 * k;
+        if (h * dx < 0) ox *= 0.42;
+        x = h * 0.36 + ox; y = dy * 0.85 * k * (dy < -0.3 ? 0.8 : 1); z = dz * 1.25 * k;
+      } else if (teil < 0.97) {
+        const k = tief * (1 + 0.06 * Math.sin(dy * 26));
+        x = dx * 0.62 * k; y = -0.62 + dy * 0.28 * k; z = -0.95 + dz * 0.38 * k;
+      } else {
+        const t = Math.random();
+        x = dx * 0.12; y = -0.55 - t * 0.65; z = -0.5 - t * 0.12 + dz * 0.12;
+      }
+      pos.set([x, y, z], i * 3);
+      tmp.copy(knochen).lerp(kuehl, haut ? Math.random() * 0.35 : 0.5 + Math.random() * 0.5)
+        .multiplyScalar(0.55 + Math.random() * 0.45);
+      col.set([tmp.r, tmp.g, tmp.b], i * 3);
+    }
+    const wolkeGeo = new THREE.BufferGeometry();
+    wolkeGeo.setAttribute("position", new THREE.BufferAttribute(pos, 3));
+    wolkeGeo.setAttribute("color", new THREE.BufferAttribute(col, 3));
+    const wolkeMat = new THREE.PointsMaterial({ size: 0.024, map: LEUCHTEN, vertexColors: true,
+      transparent: true, opacity: 0.5, depthWrite: false, blending: ADD });
+    scene.add(new THREE.Points(wolkeGeo, wolkeMat));
+
+    // Zeitringe für die Bahn
+    const ringe = [];
+    const ringBauen = (farbe, stark) => {
+      const pts = [];
+      for (let i = 0; i <= 64; i++) { const a = (i / 64) * Math.PI * 2; pts.push(new THREE.Vector3(Math.cos(a) * 0.86, Math.sin(a) * 0.6, 0)); }
+      const g = new THREE.BufferGeometry().setFromPoints(pts);
+      const m = new THREE.LineBasicMaterial({ color: farbe, transparent: true, opacity: stark, depthWrite: false, blending: ADD });
+      const l = new THREE.Line(g, m); l.visible = false; scene.add(l);
+      return { line: l, mat: m };
+    };
+    for (let i = 0; i < 5; i++) ringe.push(ringBauen(i === 0 ? 0x86c5ff : 0x4f5569, i === 0 ? 0.4 : 0.16));
+
+    const labelsEl = $("#labels");
+    const lebend = new Map(), kanten = new Map(), vorrat = [], pulse = [];
+    let ersterLauf = true;
+
+    function knotenBauen(def) {
+      const k = { id: def.id, v: new THREE.Vector3(...def.pos), akt: ersterLauf ? 0 : 1.1, phase: streu(def.id) * 6.28 };
+      k.halo = funkeSprite(WEISS); k.kern = funkeSprite(WEISS);
+      k.halo.position.copy(k.v); k.kern.position.copy(k.v);
+      scene.add(k.halo, k.kern);
+      k.lbl = document.createElement("div"); k.lbl.className = "lbl"; labelsEl.appendChild(k.lbl);
+      return k;
+    }
+    function knotenSetzen(k, def) {
+      const bewegt = def.pos.some((v, i) => Math.abs(v - k.v.getComponent(i)) > 1e-4);
+      Object.assign(k, { label: def.label, farbe: def.farbe, ton: def.ton, w: def.w, major: def.major,
+        art: def.art, ref: def.ref, glanz: def.glanz ?? 1 });
+      if (bewegt) { k.v.set(...def.pos); k.halo.position.copy(k.v); k.kern.position.copy(k.v); }
+      k.hex = def.ton === "alarm" ? "#FF5A5F" : def.ton === "soon" ? "#F5C04A" : def.farbe;
+      const c = new THREE.Color(k.hex);
+      k.halo.material.color.copy(c); k.kern.material.color.copy(c).lerp(WEISS, 0.6);
+      k.basis = 0.055 * (def.w || 1);
+      k.lbl.textContent = def.label;
+      k.lbl.classList.toggle("major", !!def.major);
+      k.lbl.classList.toggle("alarm", def.ton === "alarm");
+      k.lblW = null;
+      return bewegt;
+    }
+    function knotenWeg(k) {
+      scene.remove(k.halo, k.kern);
+      k.halo.material.dispose(); k.kern.material.dispose(); k.lbl.remove();
+      lebend.delete(k.id);
+    }
+    const kantenId = (a, b) => (a < b ? a + "|" + b : b + "|" + a);
+    function kanteBauen(id, A, B) {
+      const mitte = A.v.clone().add(B.v).multiplyScalar(0.5);
+      const schub = mitte.lengthSq() < 0.01 ? new THREE.Vector3(0, 1, 0) : mitte.clone().normalize();
+      const kurve = new THREE.QuadraticBezierCurve3(A.v.clone(),
+        mitte.add(schub.multiplyScalar(0.1 + 0.14 * A.v.distanceTo(B.v))), B.v.clone());
+      const pts = kurve.getPoints(28);
+      const g = new THREE.BufferGeometry().setFromPoints(pts);
+      g.setAttribute("color", new THREE.BufferAttribute(new Float32Array(pts.length * 3), 3));
+      const mat = new THREE.LineBasicMaterial({ vertexColors: true, transparent: true, opacity: 0.12,
+        depthWrite: false, blending: ADD });
+      const line = new THREE.Line(g, mat);
+      scene.add(line);
+      const e = { id, a: A, b: B, kurve, mat, line, op: 0.12, hitze: 0 };
+      kanteFaerben(e);
+      return e;
+    }
+    function kanteFaerben(e) {
+      const attr = e.line.geometry.getAttribute("color"), n = attr.count;
+      const ca = new THREE.Color(e.a.hex), cb = new THREE.Color(e.b.hex), c = new THREE.Color();
+      for (let i = 0; i < n; i++) { c.copy(ca).lerp(cb, i / (n - 1)); attr.setXYZ(i, c.r, c.g, c.b); }
+      attr.needsUpdate = true;
+    }
+    function kanteWeg(id) {
+      const e = kanten.get(id);
+      if (!e) return;
+      scene.remove(e.line); e.line.geometry.dispose(); e.mat.dispose(); kanten.delete(id);
+      for (const p of pulse) if (p.e === e) p.tot = true;
+    }
+
+    // ---- Was im Raum liegt: 16 Organe (Struktur) oder die Live-Einträge (Zeit)
+    const jitter = (id, s) => (streu(id) - 0.5) * 2 * s;
+    function defsGehirn() {
+      return ORGANE.map((o) => {
+        const n = organZahl(o);
+        return { id: "organ:" + o.id, label: o.name + (n == null ? "" : "  " + zahl(n)), pos: o.pos,
+          farbe: o.farbe, ton: organWarn(o) ? "alarm" : null, w: o.gross ? 1.5 : 1.15, major: true,
+          art: "organ", ref: o.id, glanz: n ? 1 : 0.55 };
+      });
+    }
+    const zFuerTage = (t) => t < 0 ? 1.05 + Math.min(0.32, -t * 0.05) : 0.95 - clamp(t, 0, BAHN_TAGE) / BAHN_TAGE * 1.9;
+    function defsBahn() {
+      const raus = [];
+      for (const t of aufgaben()) {
+        if (t.tage == null || t.tage > BAHN_TAGE) continue;
+        const [ton, w] = dringlich(t);
+        raus.push({ id: "aufgabe:" + t.id, label: kurz(ohnePrefix(t.titel), 30), art: "aufgabe", ref: t.id,
+          farbe: "#C7A8F5", ton: ton === "ruhig" ? null : ton, w, major: t.tage <= 1,
+          pos: [-0.55 + jitter(t.id, 0.22), 0.02 + jitter(t.id + "y", 0.12), zFuerTage(t.tage)] });
+      }
+      for (const e of termine()) {
+        const vl = !!e.vorlesung;
+        raus.push({ id: "termin:" + e.id,
+          label: kurz((e.uhrzeit ? e.uhrzeit + " " : "") + (vl ? e.vorlesung.kurz : e.titel), 30),
+          art: "termin", ref: e.id, farbe: vl ? "#8E9CFF" : "#6FD6C4", ton: null,
+          w: vl ? 0.8 : (e.tage === 0 ? 1.25 : 0.95), glanz: vl ? 0.6 : 1,
+          major: e.tage === 0 && !vl,
+          pos: [-0.55 + jitter(e.id, 0.22), (vl ? 0.66 : 0.4) + jitter(e.id + "y", 0.09), zFuerTage(e.tage)] });
+      }
+      for (const t of themenAktiv()) {
+        raus.push({ id: "thema:" + t.id, label: kurz(t.name, 26), art: "thema", ref: t.id, farbe: "#8E9CFF",
+          ton: t.tage <= 0 ? "soon" : null, w: t.tage <= 0 ? 1.05 : 0.8, major: false,
+          pos: [-0.55 + jitter(t.id, 0.24), -0.3 + jitter(t.id + "y", 0.1), zFuerTage(Math.max(0, t.tage))] });
+      }
+      for (const w of warnungen()) {
+        raus.push({ id: "warnung:" + w.id, label: kurz(w.titel, 28), art: "warnung", ref: w.id, farbe: "#FF5A5F",
+          ton: "alarm", w: 1.15, major: true, pos: [0.55 + jitter(w.id, 0.2), -0.42 + jitter(w.id + "y", 0.12), zFuerTage(0)] });
+      }
+      for (const r of laeufe().filter((x) => x.zeit.slice(0, 10) === heute())) {
+        raus.push({ id: "lauf:" + r.id, label: kurz(r.gruppe, 22), art: "lauf", ref: r.id, farbe: "#F0B35A",
+          ton: null, w: 0.8, major: false, pos: [0.58 + jitter(r.id, 0.2), -0.62 + jitter(r.id + "y", 0.1), zFuerTage(0)] });
+      }
+      // Geplante Morgenläufe erscheinen erst, wenn der Takt wirklich eingerichtet ist.
+      if ((S.zustand?.phasen || []).find((p) => p.nr === 4)?.status === "erledigt")
+        for (let d = 1; d <= BAHN_TAGE; d++)
+          raus.push({ id: "takt:" + d, label: d === 1 ? "Morgenlauf" : "", art: "takt", ref: null,
+            farbe: "#86C5FF", ton: null, w: 0.7, major: false, pos: [0.55, -0.5, zFuerTage(d)], glanz: 0.5 });
+      return raus;
+    }
+
+    function sync() {
+      const defs = blick === "gehirn" ? defsGehirn() : defsBahn();
+      const gesehen = new Set(), bewegt = new Set();
+      for (const def of defs) {
+        gesehen.add(def.id);
+        let k = lebend.get(def.id);
+        if (!k) { k = knotenBauen(def); lebend.set(def.id, k); knotenSetzen(k, def); }
+        else if (knotenSetzen(k, def)) bewegt.add(def.id);
+      }
+      for (const k of [...lebend.values()]) if (!gesehen.has(k.id)) knotenWeg(k);
+      for (const k of lebend.values()) k.nachbarn = [];
+
+      const gewollt = new Set();
+      if (blick === "gehirn") {
+        for (const [a, b] of KANTEN) {
+          const A = lebend.get("organ:" + a), B = lebend.get("organ:" + b);
+          if (!A || !B) continue;
+          const id = kantenId(A.id, B.id);
+          gewollt.add(id);
+          if (kanten.has(id) && (bewegt.has(A.id) || bewegt.has(B.id))) kanteWeg(id);
+          if (!kanten.has(id)) kanten.set(id, kanteBauen(id, A, B));
+          else kanteFaerben(kanten.get(id));
+        }
+      }
+      for (const id of [...kanten.keys()]) if (!gewollt.has(id)) kanteWeg(id);
+      for (const e of kanten.values()) { e.a.nachbarn.push(e); e.b.nachbarn.push(e); }
+      for (const r of ringe) r.line.visible = false;
+      if (blick === "bahn") {
+        ringe[0].line.position.z = zFuerTage(0); ringe[0].line.visible = true;
+        let i = 1;
+        for (let d = 1; d <= BAHN_TAGE && i < ringe.length; d++) {
+          const iso = isoTag(tagNr(heute()) + d);
+          if (new Date(tagNr(iso) * 864e5).getUTCDay() === 6) { ringe[i].line.position.z = zFuerTage(d); ringe[i].line.visible = true; i++; }
+        }
+      }
+      ersterLauf = false;
+    }
+
+    function puls(e, von, { dauer = 1200, stark = 1, ziel } = {}) {
+      const vor = e.a === von, sprites = [];
+      for (let i = 0; i < 4; i++) {
+        const sp = vorrat.pop() || funkeSprite(WEISS);
+        sp.material.color.set(von.hex).lerp(WEISS, i === 0 ? 0.5 : 0.1);
+        sp.visible = true; scene.add(sp); sprites.push(sp);
+      }
+      e.hitze = Math.max(e.hitze, stark);
+      pulse.push({ e, vor, t: 0, dauer, stark, sprites, ziel: vor ? e.b : e.a });
+    }
+    function anstossen(organId, stark = 1.3) {
+      const k = lebend.get("organ:" + organId);
+      if (!k) return;
+      k.akt = 1.6;
+      if (!ruhig) (k.nachbarn || []).forEach((e, i) =>
+        setTimeout(() => kanten.has(e.id) && puls(e, k, { dauer: 900, stark }), i * 60));
+    }
+
+    // ---- Kamera und Zeigen
+    let gier = 0.7, neig = 0.2, weit = schmal() ? 7.2 : 5.4, gierZ = gier, neigZ = neig, weitZ = weit, letzte = -1e9;
+    const zeiger = new Map();
+    let runter = null, zoom0 = 0;
+    canvas.addEventListener("pointerdown", (e) => {
+      canvas.setPointerCapture(e.pointerId);
+      zeiger.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      runter = { x: e.clientX, y: e.clientY };
+      if (zeiger.size === 2) { const [p, q] = [...zeiger.values()]; zoom0 = Math.hypot(p.x - q.x, p.y - q.y); }
+      canvas.classList.add("dragging"); letzte = performance.now();
+    });
+    canvas.addEventListener("pointermove", (e) => {
+      const p = zeiger.get(e.pointerId);
+      if (!p) { ueber = treffer(e.clientX, e.clientY); canvas.classList.toggle("hovering", !!ueber); return; }
+      if (zeiger.size === 2) {
+        p.x = e.clientX; p.y = e.clientY;
+        const [a, b] = [...zeiger.values()], d = Math.hypot(a.x - b.x, a.y - b.y);
+        if (zoom0) weitZ = clamp(weitZ * (zoom0 / d), 2.6, 9);
+        zoom0 = d;
+      } else {
+        gierZ -= (e.clientX - p.x) * 0.006;
+        neigZ = clamp(neigZ + (e.clientY - p.y) * 0.004, -1.2, 1.2);
+        p.x = e.clientX; p.y = e.clientY;
+      }
+      letzte = performance.now();
+    });
+    const hoch = (e) => {
+      zeiger.delete(e.pointerId);
+      canvas.classList.remove("dragging");
+      if (runter && zeiger.size === 0 && Math.hypot(e.clientX - runter.x, e.clientY - runter.y) < 8) {
+        const k = treffer(e.clientX, e.clientY);
+        if (k) waehlen(k);
+        else if (!blatt.hidden) blattZu();
+      }
+      runter = null;
+    };
+    canvas.addEventListener("pointerup", hoch);
+    canvas.addEventListener("pointercancel", hoch);
+    canvas.addEventListener("wheel", (e) => { e.preventDefault(); weitZ = clamp(weitZ * (1 + e.deltaY * 0.001), 2.6, 9); letzte = performance.now(); }, { passive: false });
+
+    const pv = new THREE.Vector3();
+    const aufSchirm = (v) => { pv.copy(v).project(camera); return { x: (pv.x * .5 + .5) * innerWidth, y: (-pv.y * .5 + .5) * innerHeight, z: pv.z }; };
+    // Getroffen wird großzügig: 44 px sind eine Daumenkuppe, 3 px sind ein Münzwurf.
+    function treffer(x, y) {
+      let best = null, bestD = Infinity;
+      for (const k of lebend.values()) {
+        const s = aufSchirm(k.v);
+        if (s.z > 1) continue;
+        const d = Math.hypot(s.x - x, s.y - y);
+        if (d <= Math.max(44, k.basis * 320) && d < bestD) { best = k; bestD = d; }
+      }
+      return best;
+    }
+    function waehlen(k) {
+      auswahl = k.id;
+      k.akt = 1.5;
+      if (k.art === "organ") { blattOrgan(k.ref); anstossen(k.ref, 0.9); }
+      else if (k.art === "lauf") {
+        const r = (S.zustand?.laeufe || []).find((x) => x.id === k.ref);
+        if (r) blattZeigen(`<h3>${esc(r.gruppe)}${r.typ === "plan" ? " · Trockenlauf" : ""}</h3>
+          ${fakten([["Wann", esc(stempel(r.zeit))], ["Zeilen", esc(zahl(r.zeilen))], ["Datei", esc(r.datei)]])}
+          <p>Zurückholen geht über das Protokoll in logs\\. Sag im Chat, welchen Lauf Du rückgängig machen willst.</p>`);
+      } else if (k.art === "takt") {
+        blattOrgan("takt");
+      } else blattSache(k.art, k.ref);
+    }
+
+    // ---- Beschriftungen: im Gehirn immer alle 16, in der Bahn die vordersten ohne Überlappung
+    function labelsSetzen() {
+      const kandidaten = [];
+      for (const k of lebend.values()) {
+        const s = aufSchirm(k.v);
+        k.sicht = s;
+        if (s.z > 1 || !k.label) { k.lbl.classList.toggle("on", false); k.lblAn = false; continue; }
+        kandidaten.push(k);
+      }
+      kandidaten.sort((a, b) => a.sicht.z - b.sicht.z);
+      const belegt = [], max = blick === "gehirn" ? 16 : (schmal() ? 9 : 16);
+      let gesetzt = 0;
+      for (const k of kandidaten) {
+        if (k.lblW == null) { k.lblW = k.lbl.offsetWidth; k.lblH = k.lbl.offsetHeight || 18; }
+        const w = k.lblW, h = k.lblH, luft = 8 + k.basis * 50;
+        const x = k.sicht.x - w / 2, y = k.sicht.y - h - luft;
+        const drin = x >= 6 && y >= 6 && x + w <= innerWidth - 6 && y + h <= innerHeight - 6;
+        const frei = drin && !belegt.some((r) => x < r.x + r.w + 4 && x + w + 4 > r.x && y < r.y + r.h + 4 && y + h + 4 > r.y);
+        const zeigen = frei && (gesetzt < max || k.id === auswahl || k === ueber);
+        if (zeigen) {
+          belegt.push({ x, y, w, h }); gesetzt++;
+          k.lbl.style.transform = `translate(${x.toFixed(1)}px,${y.toFixed(1)}px)`;
+          k.lbl.classList.toggle("back", k.sicht.z > 0.55 && k.id !== auswahl && k !== ueber);
+          k.lbl.classList.toggle("sel", k.id === auswahl);
+          if (k.id === auswahl) k.lbl.style.setProperty("--c", k.hex);
+        }
+        if (zeigen !== !!k.lblAn) { k.lbl.classList.toggle("on", zeigen); k.lblAn = zeigen; }
+      }
+    }
+
+    function groesse() {
+      renderer.setSize(innerWidth, innerHeight, false);
+      camera.aspect = innerWidth / innerHeight;
+      camera.updateProjectionMatrix();
+      for (const k of lebend.values()) k.lblW = null;
+    }
+    addEventListener("resize", groesse);
+    groesse();
+    sync();
+
+    let vorher = performance.now();
+    function frame(jetzt) {
+      const dt = Math.min(0.05, (jetzt - vorher) / 1000);
+      vorher = jetzt;
+      const zeit = jetzt / 1000;
+      if (!R.aktiv) { requestAnimationFrame(frame); return; }
+      if (!ruhig && jetzt - letzte > 4000 && zeiger.size === 0 && !auswahl) gierZ += dt * 0.05;
+      gier += (gierZ - gier) * Math.min(1, dt * 5);
+      neig += (neigZ - neig) * Math.min(1, dt * 5);
+      weit += (weitZ - weit) * Math.min(1, dt * 5);
+      camera.position.set(weit * Math.cos(neig) * Math.sin(gier), weit * Math.sin(neig), weit * Math.cos(neig) * Math.cos(gier));
+      camera.lookAt(0, -0.02, 0);
+      wolkeMat.opacity = 0.44 + (ruhig ? 0 : 0.05 * Math.sin(zeit * 0.7)) + (denkt ? 0.08 : 0);
+
+      for (const k of lebend.values()) {
+        k.akt *= Math.exp(-dt * 1.5);
+        const gewaehlt = k.id === auswahl, alarm = k.ton === "alarm";
+        const atmen = ruhig ? 1 : 1 + (alarm ? 0.2 : 0.06) * Math.sin(zeit * (alarm ? 3.2 : 1.4) + k.phase);
+        const a = k.akt + (gewaehlt ? 0.55 : 0) + (k === ueber ? 0.35 : 0);
+        const g = k.glanz ?? 1;
+        k.halo.scale.setScalar(k.basis * 4.2 * (0.55 + 0.45 * g) * (1 + a * 1.3) * atmen);
+        k.halo.material.opacity = Math.min(1, 0.14 + 0.24 * g + a * 0.55);
+        k.kern.scale.setScalar(k.basis * (1.1 + a * 0.5));
+        k.kern.material.opacity = 0.35 + 0.6 * g;
+      }
+      labelsSetzen();
+
+      for (const e of kanten.values()) {
+        e.hitze *= Math.exp(-dt * 2.2);
+        let t = 0.13;
+        if (auswahl) t = e.a.id === auswahl || e.b.id === auswahl ? 0.6 : 0.06;
+        e.op += (t - e.op) * Math.min(1, dt * 5);
+        e.mat.opacity = Math.min(1, e.op + e.hitze * 0.35);
+      }
+      for (let i = pulse.length - 1; i >= 0; i--) {
+        const p = pulse[i];
+        p.t += (dt * 1000) / p.dauer;
+        if (!p.tot) p.sprites.forEach((sp, j) => {
+          const tt = clamp(p.t - j * 0.03, 0, 1);
+          p.e.kurve.getPoint(p.vor ? tt : 1 - tt, sp.position);
+          const ab = 1 - j / 4;
+          sp.scale.setScalar((j === 0 ? 0.09 : 0.06) * ab * (0.6 + p.stark * 0.5));
+          sp.material.opacity = ab * Math.min(1, p.stark) * Math.sin(Math.PI * Math.min(1, p.t)) * 0.9;
+        });
+        if (p.tot || p.t >= 1.1) {
+          if (!p.tot && p.ziel) p.ziel.akt = Math.max(p.ziel.akt, 0.9);
+          p.sprites.forEach((sp) => { sp.visible = false; scene.remove(sp); vorrat.push(sp); });
+          pulse.splice(i, 1);
+        }
+      }
+      renderer.render(scene, camera);
+      requestAnimationFrame(frame);
+    }
+    R = { aktiv: true, sync, anstossen };
+    requestAnimationFrame(frame);
+  }
+
+  function canvasSync() { if (R && R.aktiv) R.sync(); }
+  function funke(organId) { if (R && R.aktiv && blick === "gehirn") R.anstossen(organId); }
+
+  // ---------------------------------------------------------------- Start
+  blickSetzen((location.hash || "").replace("#", "") || "puls");
+  renderPuls(); renderStatus(); renderOrgane();
+
+  (async () => {
+    const hol = (n) => (window.claude?.use ? window.claude.use(n).catch(() => null) : Promise.resolve(null));
+    const [mcp, db, sample] = await Promise.all([hol("mcp"), hol("db"), hol("sample")]);
+    Object.assign(S, { mcp, db, sample, caps: true });
+    if (!db) S.tafelStand = {};
+    if (mcp) { watchTodoist(); watchKalender(); }
+    if (db) dbAbo();
+    neuZeichnen();
+  })();
+
+})();
+</script>
+
+</body></html>
