@@ -182,7 +182,7 @@
   .slot.frei .t{color:var(--mist);font-size:13.5px}
   .slot.fertig .t{color:var(--mist);text-decoration:line-through}
   .waehler{display:flex;flex-direction:column;gap:4px}
-  .waehler button{all:unset;cursor:pointer;display:grid;grid-template-columns:1fr auto;gap:10px;
+  .waehler button{all:unset;cursor:pointer;width:100%;box-sizing:border-box;display:grid;grid-template-columns:1fr auto;gap:10px;
     align-items:center;padding:10px 11px;border-radius:var(--r);border:1px solid var(--line);font-size:13.5px}
   .waehler button:hover{border-color:var(--mist);background:var(--hover)}
   .waehler button small{font-family:var(--f-mono);font-size:10.5px;color:var(--mist)}
@@ -260,15 +260,14 @@
     text-transform:uppercase;color:var(--mist)}
 
   /* ---------- Detailblatt ---------- */
-  #blatt{position:fixed;left:0;right:0;bottom:0;z-index:14;max-height:74vh;
-    background:var(--glass);border-top:1px solid var(--line-2);border-radius:6px 6px 0 0;
-    display:flex;flex-direction:column;box-shadow:0 -6px 28px rgba(26,27,29,.12);
-    animation:hoch .18s ease-out}
+  #blatt{position:fixed;left:0;right:0;bottom:0;z-index:14;max-height:56vh;
+    background:var(--glass);border-top:1px solid var(--line-2);border-radius:8px 8px 0 0;
+    display:flex;flex-direction:column;box-shadow:0 -6px 28px rgba(26,27,29,.14);
+    animation:hoch .18s ease-out;transition:transform .22s ease-out}
   #blatt[hidden]{display:none!important}
-  @keyframes hoch{from{transform:translateY(14px);opacity:0}}
-  .griff{flex:none;display:grid;place-items:center;padding:9px 0 3px;cursor:grab}
-  .griff span{width:34px;height:3px;border-radius:2px;background:var(--line-2)}
-  #blattBody{overflow:auto;padding:8px 18px calc(22px + env(safe-area-inset-bottom,0px));
+  body[data-blick="gehirn"] #blatt{max-height:48vh}
+  @keyframes hoch{from{transform:translateY(18px);opacity:0}}
+  #blattBody{overflow:auto;overscroll-behavior:contain;padding:2px 18px calc(22px + env(safe-area-inset-bottom,0px));
     display:flex;flex-direction:column;gap:16px;max-width:640px;margin:0 auto;width:100%}
   #blattBody h3{font-weight:600;font-size:16px;line-height:1.35;margin:0;letter-spacing:-.01em}
   #blattBody p{margin:0;color:var(--bone-2);font-size:13.5px;text-wrap:pretty;overflow-wrap:anywhere}
@@ -292,13 +291,20 @@
   .karte-v.erledigt{opacity:.5}
 
   /* ---------- Organ-Navigation (liegt auf der Bühne) ---------- */
-  #organe{display:flex;flex-direction:column;max-width:640px;margin:0 auto;width:100%;
-    padding:2px 16px calc(24px + env(safe-area-inset-bottom,0px));color:var(--slate-ink)}
+  #organe{position:fixed;left:0;right:0;bottom:0;z-index:13;max-height:52vh;
+    display:flex;flex-direction:column;background:var(--slate);
+    border-top:1px solid var(--slate-line-2);border-radius:8px 8px 0 0;
+    color:var(--slate-ink);box-shadow:0 -6px 28px rgba(0,0,0,.4);
+    animation:hoch .18s ease-out;transition:transform .22s ease-out}
   #organe[hidden]{display:none!important}
-  body:not([data-blick="puls"]) #organe{max-height:44vh;overflow-y:auto}
+  #organe .blatt-kopf .griff{background:var(--slate-line-2)}
+  #organe .sheet-zu{color:var(--slate-mist)}
+  #organe .sheet-zu:hover{background:rgba(230,229,225,.09);color:var(--slate-ink)}
+  #organeBody{overflow-y:auto;overscroll-behavior:contain;max-width:640px;margin:0 auto;width:100%;
+    padding:2px 16px calc(20px + env(safe-area-inset-bottom,0px))}
   #organe h2{margin:0 0 6px;font-family:var(--f-mono);font-weight:400;font-size:10.5px;
     letter-spacing:.09em;text-transform:uppercase;color:var(--slate-mist)}
-  .organ{all:unset;box-sizing:border-box;display:grid;grid-template-columns:8px 1fr auto;
+  .organ{all:unset;box-sizing:border-box;width:100%;display:grid;grid-template-columns:8px 1fr auto;
     align-items:center;gap:11px;min-height:42px;padding:4px 9px;margin:0 -9px;border-radius:3px;
     cursor:pointer;font-size:13.5px}
   .organ:hover{background:rgba(230,229,225,.07)}
@@ -352,10 +358,72 @@
   /* Der Rückgängig-Hinweis muss über dem Eingabefeld bleiben, nicht darauf. */
   body[data-blick="jarvis"] #toast{bottom:calc(84px + env(safe-area-inset-bottom,0px))}
 
+
+  /* ---------- Kalender ---------- */
+  #kalender{flex:1;padding:18px 16px calc(40px + env(safe-area-inset-bottom,0px))}
+  #kalender[hidden]{display:none!important}
+  .kal-in{max-width:640px;margin:0 auto;display:flex;flex-direction:column;gap:26px}
+  .kal-kopf{display:flex;align-items:baseline;gap:9px;flex-wrap:wrap;margin-bottom:9px}
+  .kal-kopf h2{margin:0;font-family:var(--f-mono);font-weight:400;font-size:10.5px;letter-spacing:.09em;
+    text-transform:uppercase;color:var(--mist)}
+  .kal-kopf em{font-style:normal;color:var(--faint);font-family:var(--f-mono);font-size:10.5px}
+
+  .kal-wochentage,.kal-gitter{display:grid;grid-template-columns:repeat(7,1fr);gap:2px}
+  .kal-wochentage{margin-bottom:4px}
+  .kal-wochentage span{font-family:var(--f-mono);font-size:9.5px;letter-spacing:.06em;text-transform:uppercase;
+    color:var(--faint);text-align:center;padding-bottom:2px}
+  .kal-tag{all:unset;box-sizing:border-box;width:100%;cursor:pointer;display:flex;flex-direction:column;align-items:center;
+    gap:3px;min-height:44px;padding:5px 2px 4px;border-radius:3px;border:1px solid transparent}
+  .kal-tag:hover{background:var(--hover)}
+  .kal-tag:focus-visible{outline:2px solid var(--synapse);outline-offset:-2px}
+  .kal-tag b{font-family:var(--f-mono);font-weight:400;font-size:12.5px;color:var(--bone-2);
+    font-variant-numeric:tabular-nums;line-height:1.2}
+  .kal-tag.blass b{color:var(--faint)}
+  .kal-tag.heute{border-color:var(--synapse)}
+  .kal-tag.heute b{color:var(--synapse);font-weight:500}
+  .kal-tag.gewaehlt{background:var(--raise)}
+  .kal-tag.monatswechsel{border-left:1px solid var(--line)}
+  .kal-punkte{display:flex;gap:2px;min-height:5px;align-items:center}
+  .kal-punkte i{width:4px;height:4px;border-radius:50%;background:var(--c,var(--line-2))}
+  .kal-punkte i.termin{--c:var(--synapse)}
+  .kal-punkte i.aufgabe{--c:var(--bone-2)}
+  .kal-punkte i.alarm{--c:var(--alarm)}
+  .kal-punkte i.vl{--c:var(--line-2)}
+
+  .kal-tage{display:flex;flex-direction:column;gap:22px}
+  .kal-tagblock{display:flex;flex-direction:column;gap:2px;scroll-margin-top:96px}
+  .kal-datum{display:flex;align-items:baseline;gap:9px;padding-bottom:5px;border-bottom:1px solid var(--line-2)}
+  .kal-datum h3{margin:0;font-size:13.5px;font-weight:600;letter-spacing:-.005em}
+  .kal-datum span{font-family:var(--f-mono);font-size:10.5px;color:var(--mist)}
+  .kal-tagblock.ist-heute .kal-datum h3{color:var(--synapse)}
+  .kal-zeit{font-family:var(--f-mono);font-size:10.5px;color:var(--mist);font-variant-numeric:tabular-nums;
+    white-space:nowrap;padding-top:3px}
+
+  /* ---------- Unterfenster: Blatt und Organe teilen sich ein Verhalten ---------- */
+  .blatt-kopf{flex:none;position:relative;display:grid;place-items:center;height:36px;cursor:grab;
+    touch-action:none;-webkit-user-select:none;user-select:none}
+  .blatt-kopf:active{cursor:grabbing}
+  .blatt-kopf .griff{width:34px;height:4px;border-radius:2px;background:var(--line-2)}
+  .sheet-zu{all:unset;position:absolute;top:2px;right:6px;width:36px;height:36px;display:grid;
+    place-items:center;border-radius:3px;cursor:pointer;color:var(--mist);font-size:19px;line-height:1}
+  .sheet-zu:hover{background:var(--hover);color:var(--bone)}
+  .sheet-zu:focus-visible{outline:2px solid var(--synapse);outline-offset:-2px}
+  .zieht{transition:none!important}
+
+  /* Der Knopf, der die Organe holt — sonst bleibt das Gehirn frei. */
+  .fab{all:unset;box-sizing:border-box;position:fixed;z-index:13;cursor:pointer;
+    left:50%;transform:translateX(-50%);bottom:calc(18px + env(safe-area-inset-bottom,0px));
+    display:inline-flex;align-items:center;gap:8px;min-height:40px;padding:0 16px;border-radius:20px;
+    background:var(--shell);border:1px solid var(--line-2);color:var(--bone);font-size:13.5px;
+    box-shadow:var(--schatten)}
+  .fab[hidden]{display:none!important}
+  .fab:hover{border-color:var(--mist)}
+  .fab:focus-visible{outline:2px solid var(--synapse);outline-offset:2px}
+
   /* ---------- Desktop ---------- */
   @media (min-width:980px){
     .top{padding:16px 24px 0}
-    .top-in,#puls .spalten,#blattBody,#organe{max-width:1040px}
+    .top-in,#puls .spalten,#blattBody,.kal-in{max-width:1040px}
     .top-in{display:grid;grid-template-columns:1fr auto;grid-template-areas:"brand blicke" "ask ask" "status status";
       gap:8px 20px;align-items:center}
     .brand{grid-area:brand} .blicke{grid-area:blicke;justify-self:end;align-self:end}
@@ -364,22 +432,41 @@
     #puls .spalten{display:grid;grid-template-columns:1fr 1fr;gap:30px 40px;align-items:start}
     #puls .spalten > .weit{grid-column:1/-1}
     #antwort{max-width:1040px}
-    #blatt{left:auto;right:24px;bottom:24px;width:390px;max-height:72vh;border-radius:6px;
+    #blatt{left:auto;right:24px;bottom:24px;width:390px;max-height:66vh;border-radius:6px;
       border:1px solid var(--line-2);box-shadow:0 10px 36px rgba(0,0,0,.22)}
-    #organe{position:fixed;left:24px;bottom:24px;width:250px;padding:0;z-index:5}
-    body:not([data-blick="puls"]) #organe{max-height:calc(100vh - 230px)}
-    .griff{display:none}
+    body[data-blick="gehirn"] #blatt{max-height:66vh}
+    #organe{left:24px;right:auto;bottom:24px;width:264px;max-height:calc(100vh - 210px);
+      border:1px solid var(--slate-line-2);border-radius:6px}
+    #organe .blatt-kopf{height:30px}
+    .fab{left:24px;transform:none;bottom:24px}
     #jarvis{max-width:820px;padding:0 24px}
+    /* Kalender: Raster links stehend, Agenda rechts. */
+    .kal-in{display:grid;grid-template-columns:330px 1fr;gap:38px;align-items:start}
+    .kal-raster{position:sticky;top:120px}
+    .kal-tag{min-height:40px}
+  }
+
+  /* ---------- Handy ---------- */
+  @media (max-width:979px){
+    .btn{min-height:38px;padding:0 13px}
+    .btn.mini{min-height:34px;padding:0 11px}
+    .btn.still{padding:0 9px}
+    .z-a{gap:7px}
+    /* Im Gehirn zählt jede Zeile Höhe: Eingabefeld und Status treten zurück. */
+    body[data-blick="gehirn"] .ask,body[data-blick="gehirn"] .status{display:none}
+    body[data-blick="gehirn"] .top{padding-bottom:0}
+    .kal-tag{min-height:46px}
   }
 
   @media (prefers-reduced-motion:reduce){
     .spark{animation:none}
-    .tafel-karte,#blatt{animation:none}
+    .tafel-karte,#blatt,#organe{animation:none}
+    #blatt,#organe{transition:none}
   }
 </style>
 
 <div id="canvasLayer" hidden>
-  <canvas id="stage" aria-label="Räumliche Ansicht des Cortex"></canvas>
+  <canvas id="stage" aria-label="Das Gehirn: seine Organe und ihre Verbindungen"></canvas>
   <div class="vignette"></div>
   <div id="labels"></div>
 </div>
@@ -394,7 +481,7 @@
 
       <div class="blicke" role="tablist" aria-label="Blick wählen">
         <button type="button" role="tab" id="tabPuls" aria-selected="true" data-blick="puls">Puls</button>
-        <button type="button" role="tab" id="tabBahn" aria-selected="false" data-blick="bahn">Bahn</button>
+        <button type="button" role="tab" id="tabKalender" aria-selected="false" data-blick="kalender">Kalender</button>
         <button type="button" role="tab" id="tabGehirn" aria-selected="false" data-blick="gehirn">Gehirn</button>
         <button type="button" role="tab" id="tabJarvis" aria-selected="false" data-blick="jarvis">Jarvis</button>
       </div>
@@ -416,6 +503,13 @@
     <div class="spalten" id="pulsSpalten"></div>
   </main>
 
+  <main id="kalender" hidden>
+    <div class="kal-in">
+      <div class="kal-raster" id="kalRaster"></div>
+      <div class="kal-agenda" id="kalAgenda"></div>
+    </div>
+  </main>
+
   <main id="jarvis" hidden>
     <div id="jarvisLog"></div>
     <form id="jarvisForm" autocomplete="off">
@@ -425,11 +519,22 @@
     </form>
   </main>
 
-  <nav id="organe" hidden aria-label="Organe"></nav>
+  <nav id="organe" hidden aria-label="Organe">
+    <div class="blatt-kopf" id="organeGriff">
+      <span class="griff" aria-hidden="true"></span>
+      <button type="button" class="sheet-zu" data-do="organeZu" aria-label="Schließen">&times;</button>
+    </div>
+    <div id="organeBody"></div>
+  </nav>
+
+  <button type="button" id="organeAuf" class="fab" hidden data-do="organeAuf">Organe</button>
 </div>
 
 <aside id="blatt" hidden aria-live="polite">
-  <div class="griff" aria-hidden="true"><span></span></div>
+  <div class="blatt-kopf" id="blattGriff">
+    <span class="griff" aria-hidden="true"></span>
+    <button type="button" class="sheet-zu" data-do="zu" aria-label="Schließen">&times;</button>
+  </div>
   <div id="blattBody"></div>
 </aside>
 
@@ -458,7 +563,8 @@
   const PLAN_MAX = 3;                                      // „Drei für heute“
   const INTERVALLE = [1, 3, 7, 16, 35];                    // Wiederholungs-Queue, in Tagen
   const TAG_VON = 8, TAG_BIS = 22;                         // Fenster für „Einplanen“
-  const BAHN_TAGE = 14;
+  const KOMMT_TAGE = 14;                                   // „Kommt“ im Puls
+  const HORIZONT = 42;                                     // was Kalender und Termine laden: sechs Wochen
   const LABELS_ERLAUBT = ["abgabe", "lernen", "orga", "wartet-auf"];
 
   // Vorlesungen aus dem Kalender. Links der Titel, wie er im Kalender steht, rechts die
@@ -483,6 +589,8 @@
   const tageBis = (iso) => tagNr(iso) - tagNr(heute());
   const isoTag = (n) => new Date(n * 864e5).toISOString().slice(0, 10);
   const kurzDatum = (iso) => new Intl.DateTimeFormat("de-DE", { weekday: "short", day: "numeric", month: "short", timeZone: "UTC" })
+    .format(new Date(tagNr(iso) * 864e5));
+  const langDatum = (iso) => new Intl.DateTimeFormat("de-DE", { weekday: "long", day: "numeric", month: "long", timeZone: "UTC" })
     .format(new Date(tagNr(iso) * 864e5));
   const stempel = (iso) => new Intl.DateTimeFormat("de-DE", { day: "2-digit", month: "2-digit", hour: "2-digit",
     minute: "2-digit", timeZone: TZ }).format(new Date(iso));
@@ -550,7 +658,7 @@
   // Ganztägige Termine kommen mit exklusivem Ende und können mehrere Tage umspannen —
   // sie erscheinen an jedem Tag, den sie belegen, nicht nur am ersten.
   function termine() {
-    const von = tagNr(heute()), bis = von + BAHN_TAGE;
+    const von = tagNr(heute()), bis = von + HORIZONT;
     const raus = [];
     for (const e of S.events || []) {
       if (e.status === "cancelled") continue;
@@ -973,7 +1081,7 @@
       ? (x.uhrzeit ? x.uhrzeit : "ganztägig")
       : (x.tage == null ? "ohne Datum" : rel(x.tage));
     const meta = [
-      x.art === "termin" ? (x.tage === 0 ? "heute" : kurzDatum(x.datum)) : (x.sektion?.name || "ohne Fach"),
+      x.art === "termin" ? (opt.ohneDatum ? "" : x.tage === 0 ? "heute" : kurzDatum(x.datum)) : (x.sektion?.name || "ohne Fach"),
       x.vorlesung ? (x.endUhr ? `Vorlesung bis ${x.endUhr}` : "Vorlesung") : "",
       x.vorlesung ? (x.fach || "Fach nicht zugeordnet") : "",
       x.teil || "",
@@ -1072,14 +1180,14 @@
   }
 
   function kommtSektion() {
-    const A = aufgaben().filter((t) => t.tage != null && t.tage > 0 && t.tage <= BAHN_TAGE);
+    const A = aufgaben().filter((t) => t.tage != null && t.tage > 0 && t.tage <= KOMMT_TAGE);
     const T = termine().filter((e) => e.tage > 0);
     const alles = [...A, ...T].sort((a, b) => (a.datum + (a.uhrzeit || "")).localeCompare(b.datum + (b.uhrzeit || ""))).slice(0, 5);
-    const spaeter = aufgaben().filter((t) => t.tage != null && t.tage > BAHN_TAGE).length;
+    const spaeter = aufgaben().filter((t) => t.tage != null && t.tage > KOMMT_TAGE).length;
     if (!alles.length) return sekt("Kommt", "", leer("In den nächsten zwei Wochen steht nichts."));
-    return sekt("Kommt", `nächste ${BAHN_TAGE} Tage${spaeter ? ` · ${spaeter} später` : ""}`,
+    return sekt("Kommt", `nächste ${KOMMT_TAGE} Tage${spaeter ? ` · ${spaeter} später` : ""}`,
       `<div class="sekt">${alles.map((x) => zeile(x, { ohneAktionen: x.art === "termin" })).join("")}</div>
-       ${btn(`data-do="blick" data-blick="bahn"`, "In der Bahn ansehen", "mini still")}`);
+       ${btn(`data-do="blick" data-blick="kalender"`, "Im Kalender ansehen", "mini still")}`);
   }
 
   function rechnerSektion() {
@@ -1128,7 +1236,7 @@
     if (ohneLive()) {
       el.innerHTML = sekt("Diese Ansicht", "", `<div class="z ruhig"><i></i>
         <div class="z-t">Hier siehst Du das Gerüst, nicht Deinen Tag.</div>
-        <div class="z-m">Aufgaben, Termine und der Rechner-Stand hängen an Deiner Claude-Anmeldung. Öffne die Seite in claude.ai — dann füllen sich Puls und Bahn, und Eintragen, Verschieben und Wiederholen funktionieren.</div>
+        <div class="z-m">Aufgaben, Termine und der Rechner-Stand hängen an Deiner Claude-Anmeldung. Öffne die Seite in claude.ai — dann füllen sich Puls und Kalender, und Eintragen, Verschieben und Wiederholen funktionieren.</div>
         <div class="z-a">${btn(`data-do="blick" data-blick="gehirn"`, "Aufbau ansehen", "mini")}</div></div>`, true);
       return;
     }
@@ -1161,7 +1269,8 @@
 
   // ---------------------------------------------------------------- Organ-Navigation
   function renderOrgane() {
-    const el = $("#organe");
+    const el = $("#organeBody");
+    if (!el) return;
     el.innerHTML = `<h2>Organe</h2>` + ORGANE.map((o) => {
       const n = organZahl(o), w = organWarn(o);
       return `<button type="button" class="organ${w ? " warn" : ""}" data-do="organ" data-id="${o.id}" style="--c:${o.farbe}">
@@ -1175,11 +1284,10 @@
   function blattZu() { blatt.hidden = true; blattWas = null; if (typeof auswahlSetzen === "function") auswahlSetzen(null); }
   function blattZeigen(html, was) {
     blattWas = was || null;
-    blattBody.innerHTML = html + `<div class="z-a" style="margin:0">${btn(`data-do="zu"`, "Schließen", "mini still")}</div>`;
+    blattBody.innerHTML = html;
     blatt.hidden = false;
     blattBody.scrollTop = 0;
   }
-  $(".griff").addEventListener("click", blattZu);
 
   function findeSache(art, id) {
     if (art === "aufgabe") return aufgaben().find((t) => t.id === id) || null;
@@ -1234,7 +1342,7 @@
 
     if (id === "kalender") {
       if (!S.events) inhalt += p(S.err.kalender ? mcpText(S.err.kalender, "Google Kalender") : "Kalender lädt …");
-      else { const T = termine(); inhalt += block(`Nächste ${BAHN_TAGE} Tage`, T.length ? T.slice(0, 12).map((e) => zeile(e, { ohneAktionen: true })).join("") : leer("Keine Termine.")); }
+      else { const T = termine(); inhalt += block("Nächste Termine", T.length ? T.slice(0, 12).map((e) => zeile(e, { ohneAktionen: true })).join("") : leer("Keine Termine.")); }
     } else if (id === "plan") {
       if (!S.projekt) inhalt += p(S.err.todoist ? mcpText(S.err.todoist, "Todoist") : "Todoist lädt …");
       else {
@@ -1246,7 +1354,7 @@
           const vl = T.filter((e) => e.fach === s.name);
           const naechste = vl[0];
           return `<li class="z ${n ? "ruhig" : ""}"><i></i><div class="z-t">${esc(s.name)}</div><div class="z-r">${n} offen</div>
-            <div class="z-m">${naechste ? `nächste Vorlesung ${esc(kurzDatum(naechste.datum))} ${esc(naechste.uhrzeit || "")}${vl.length > 1 ? ` · ${vl.length} in ${BAHN_TAGE} Tagen` : ""}` : "keine Vorlesung in den nächsten " + BAHN_TAGE + " Tagen"}${s.description ? " · " + esc(s.description) : ""}</div></li>`;
+            <div class="z-m">${naechste ? `nächste Vorlesung ${esc(kurzDatum(naechste.datum))} ${esc(naechste.uhrzeit || "")}${vl.length > 1 ? ` · ${vl.length} in ${KOMMT_TAGE} Tagen` : ""}` : "keine Vorlesung in den nächsten " + KOMMT_TAGE + " Tagen"}${s.description ? " · " + esc(s.description) : ""}</div></li>`;
         }));
         const offen = [...new Set(T.filter((e) => !e.fach).map((e) => e.vorlesung.kurz))];
         if (offen.length) inhalt += `<p class="leer">Ohne Fach-Zuordnung: ${esc(offen.join(", "))}.</p>`;
@@ -1508,6 +1616,7 @@
     if (faellig) tafelPruefen("zeit:" + faellig);
     else schwellenPruefen();
     if (blick === "puls") renderPuls();
+    if (blick === "kalender") renderKalender();
     renderStatus();
   }, 60000);
 
@@ -1868,7 +1977,20 @@
 
     switch (d.do) {
       case "blatt": blattSache(d.art, d.id); break;
-      case "organ": blattOrgan(d.id); if (typeof auswahlSetzen === "function") auswahlSetzen(d.id); break;
+      case "organ":
+        blattOrgan(d.id);
+        if (typeof auswahlSetzen === "function") auswahlSetzen(d.id);
+        organeZeigen(false);        // die Liste hat ihren Zweck erfüllt, das Blatt braucht den Platz
+        break;
+      case "organeAuf": organeZeigen(true); break;
+      case "organeZu": organeZeigen(false); break;
+      case "kaltag": {
+        kalGewaehlt = d.datum;
+        renderKalender();
+        const ziel = document.getElementById("kal-" + d.datum);
+        if (ziel) ziel.scrollIntoView({ behavior: ruhig ? "auto" : "smooth", block: "start" });
+        break;
+      }
       case "zu": blattZu(); break;
       case "antwortZu": antwortZu(); break;
       case "stopp": fragenCtl?.abort(); antwortZu(); break;
@@ -1963,6 +2085,7 @@
     if (!tafelEl.hidden) tafelSchliessen();
     else if (!antwort.hidden) antwortZu();
     else if (!blatt.hidden) blattZu();
+    else if (organeOffen) organeZeigen(false);
   });
   // Fokus bleibt in der Tafel, solange sie offen ist.
   tafelEl.addEventListener("keydown", (e) => {
@@ -1973,6 +2096,124 @@
     if (e.shiftKey && document.activeElement === erste) { e.preventDefault(); letzte.focus(); }
     else if (!e.shiftKey && document.activeElement === letzte) { e.preventDefault(); erste.focus(); }
   });
+
+  // ---------------------------------------------------------------- Kalender
+  // Sechs Wochen ab dem Montag dieser Woche — genau das Fenster, das auch
+  // geladen wird. Ein Monatsraster wäre die gewohntere Form, würde aber Tage
+  // zeigen, für die keine Daten da sind; das wäre eine Lüge mit Gitter.
+  const WOCHENTAGE = ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"];
+  const KAL_WOCHEN = 6;
+  let kalGewaehlt = null;
+
+  const kalStart = () => {
+    const n = tagNr(heute());
+    return n - ((new Date(n * 864e5).getUTCDay() + 6) % 7);   // zurück auf Montag
+  };
+
+  function kalTage() {
+    const von = kalStart(), karte = new Map();
+    for (let i = 0; i < KAL_WOCHEN * 7; i++) karte.set(isoTag(von + i), { termine: [], aufgaben: [] });
+    for (const e of termine()) karte.get(e.datum)?.termine.push(e);
+    for (const t of aufgaben()) if (t.datum && karte.has(t.datum)) karte.get(t.datum).aufgaben.push(t);
+    return karte;
+  }
+
+  function kalRaster(karte) {
+    const von = kalStart(), h = heute(), zellen = [];
+    for (let i = 0; i < KAL_WOCHEN * 7; i++) {
+      const iso = isoTag(von + i), tag = karte.get(iso), nr = +iso.slice(8, 10);
+      const punkte = [
+        ...tag.termine.map((e) => (e.vorlesung ? "vl" : "termin")),
+        ...tag.aufgaben.map((t) => (t.labels?.includes("abgabe") ? "alarm" : "aufgabe")),
+      ].slice(0, 4);
+      const kl = ["kal-tag", iso === h ? "heute" : "", iso < h ? "blass" : "",
+        iso === kalGewaehlt ? "gewaehlt" : "", nr === 1 && i > 0 ? "monatswechsel" : ""].filter(Boolean).join(" ");
+      const zahl = punkte.length ? `, ${punkte.length} ${punkte.length === 1 ? "Eintrag" : "Einträge"}` : "";
+      zellen.push(`<button type="button" class="${kl}" data-do="kaltag" data-datum="${iso}"
+        aria-label="${esc(kurzDatum(iso) + zahl)}"><b>${nr}</b>
+        <span class="kal-punkte">${punkte.map((k) => `<i class="${k}"></i>`).join("")}</span></button>`);
+    }
+    const bis = isoTag(von + KAL_WOCHEN * 7 - 1);
+    return `<div class="kal-kopf"><h2>Sechs Wochen</h2><em>${esc(kurzDatum(isoTag(von)))} – ${esc(kurzDatum(bis))}</em></div>
+      <div class="kal-wochentage">${WOCHENTAGE.map((w) => `<span>${w}</span>`).join("")}</div>
+      <div class="kal-gitter">${zellen.join("")}</div>`;
+  }
+
+  function kalAgenda(karte) {
+    const h = heute(), von = kalStart(), bloecke = [];
+    const spaet = aufgaben().filter((t) => t.tage != null && t.tage < 0).sort((a, b) => a.tage - b.tage);
+    if (spaet.length) bloecke.push(`<div class="kal-tagblock">
+      <div class="kal-datum"><h3>Überfällig</h3><span>${spaet.length} ${spaet.length === 1 ? "Aufgabe" : "Aufgaben"}</span></div>
+      <div class="sekt">${spaet.map((t) => zeile(t)).join("")}</div></div>`);
+
+    for (let i = 0; i < KAL_WOCHEN * 7; i++) {
+      const iso = isoTag(von + i);
+      if (iso < h) continue;                                   // Vergangenes steht oben unter „Überfällig“
+      const tag = karte.get(iso);
+      const alles = [...tag.termine, ...tag.aufgaben]
+        .sort((a, b) => (a.uhrzeit || "99:99").localeCompare(b.uhrzeit || "99:99"));
+      if (!alles.length && iso !== h) continue;                // leere Tage stehen schon im Raster
+      const wann = iso === h ? "heute" : rel(tageBis(iso));
+      bloecke.push(`<div class="kal-tagblock${iso === h ? " ist-heute" : ""}" id="kal-${iso}">
+        <div class="kal-datum"><h3>${esc(langDatum(iso))}</h3><span>${esc(wann)}</span></div>
+        ${alles.length ? `<div class="sekt">${alles.map((x) => zeile(x, { ohneDatum: true })).join("")}</div>`
+          : leer("Heute steht nichts an.")}</div>`);
+    }
+    return bloecke.length ? `<div class="kal-tage">${bloecke.join("")}</div>`
+      : leer("In den nächsten sechs Wochen steht nichts.");
+  }
+
+  function renderKalender() {
+    if (blick !== "kalender") return;
+    const r = $("#kalRaster"), a = $("#kalAgenda");
+    if (!S.caps) { r.innerHTML = ""; a.innerHTML = leer("Verbinde mit Todoist und Kalender …"); return; }
+    if (ohneLive()) { r.innerHTML = ""; a.innerHTML = leer("Termine und Aufgaben hängen an Deiner Claude-Anmeldung. Öffne die Seite in claude.ai."); return; }
+    const karte = kalTage();
+    r.innerHTML = kalRaster(karte);
+    a.innerHTML = kalAgenda(karte);
+  }
+
+  // ---------------------------------------------------------------- Unterfenster
+  // Ein Blatt ist ein Gegenstand: am Griff nach unten schieben legt es weg.
+  // Damit liegt Schließen immer unter dem Daumen, egal wie lang der Inhalt ist.
+  function sheetZiehen(el, griff, schliessen) {
+    let start = null, dy = 0, los = 0;
+    griff.addEventListener("pointerdown", (e) => {
+      if (e.target.closest(".sheet-zu")) return;
+      start = e.clientY; dy = 0; los = performance.now();
+      try { griff.setPointerCapture(e.pointerId); } catch (x) { /* egal */ }
+      el.classList.add("zieht");
+    });
+    griff.addEventListener("pointermove", (e) => {
+      if (start == null) return;
+      dy = Math.max(0, e.clientY - start);
+      el.style.transform = `translateY(${dy}px)`;
+    });
+    const hoch = () => {
+      if (start == null) return;
+      const schwung = dy > 26 && performance.now() - los < 320;   // kurzer Wisch reicht
+      start = null;
+      el.classList.remove("zieht");
+      if (dy > 90 || schwung) {
+        el.style.transform = "translateY(100%)";
+        setTimeout(() => { el.style.transform = ""; schliessen(); }, ruhig ? 0 : 200);
+      } else el.style.transform = "";
+    };
+    griff.addEventListener("pointerup", hoch);
+    griff.addEventListener("pointercancel", hoch);
+  }
+
+  // ---------------------------------------------------------------- Organe: eingeklappt
+  // Im Gehirn willst Du erst das Gehirn sehen. Die Liste kommt, wenn Du sie holst,
+  // und geht wieder weg, sobald sie etwas geöffnet hat.
+  let organeOffen = false;
+  function organeZeigen(auf) {
+    const imGehirn = blick === "gehirn";
+    organeOffen = imGehirn && auf;
+    $("#organe").hidden = !organeOffen;
+    $("#organeAuf").hidden = !(imGehirn && !organeOffen);
+    if (organeOffen) renderOrgane();
+  }
 
   // ---------------------------------------------------------------- Jarvis
   // Der Chat ist der zweite Eingang ins selbe Gehirn. Er liest dieselbe Lage,
@@ -2262,20 +2503,22 @@
   // ---------------------------------------------------------------- Blicke
   const blickeEl = $(".blicke");
   function blickSetzen(name) {
-    if (!["puls", "bahn", "gehirn", "jarvis"].includes(name)) name = "puls";
+    if (!["puls", "kalender", "gehirn", "jarvis"].includes(name)) name = "puls";
     blick = name;
     document.body.dataset.blick = name;
     for (const b of blickeEl.querySelectorAll("button")) b.setAttribute("aria-selected", String(b.dataset.blick === name));
-    const raum = name === "bahn" || name === "gehirn";
+    const raum = name === "gehirn";
     $("#puls").hidden = name !== "puls";
+    $("#kalender").hidden = name !== "kalender";
     $("#jarvis").hidden = name !== "jarvis";
     $("#canvasLayer").hidden = !raum;
-    $("#organe").hidden = !raum;
+    blattZu();                       // ein offenes Blatt gehört zum alten Blick
+    organeZeigen(false);             // das Gehirn beginnt frei
     try { history.replaceState(null, "", "#" + name); } catch (e) { /* egal */ }
     if (raum) canvasStarten(); else canvasRuhen();
     if (name === "puls") renderPuls();
+    if (name === "kalender") renderKalender();
     if (name === "jarvis") { if (!jLog.childElementCount) jarvisAufbauen(); jUnten(); if (!schmal()) jFeld.focus(); }
-    renderOrgane();
   }
   blickeEl.addEventListener("click", (ev) => {
     const b = ev.target.closest("[data-blick]");
@@ -2290,8 +2533,9 @@
     requestAnimationFrame(() => {
       zeichnenGeplant = false;
       renderStatus();
-      renderOrgane();
+      if (organeOffen) renderOrgane();
       if (blick === "puls") renderPuls();
+      if (blick === "kalender") renderKalender();
       if (blattWas) {
         if (blattWas.art === "organ") blattOrgan(blattWas.id);
         else if (findeSache(blattWas.art, blattWas.id)) blattSache(blattWas.art, blattWas.id);
@@ -2336,7 +2580,7 @@
     }, { refetchInterval: 900000 });
   }
   function watchKalender() {
-    const von = heute(), bis = isoTag(tagNr(von) + BAHN_TAGE + 1), off = offsetFuer(von);
+    const von = heute(), bis = isoTag(tagNr(von) + HORIZONT + 1), off = offsetFuer(von);
     S.mcp.watchTool("Google Calendar", "list_events", { startTime: `${von}T00:00:00${off}`,
       endTime: `${bis}T00:00:00${off}`, orderBy: "startTime", pageSize: 100, timeZone: TZ }, (ev) => {
       if (ev.type === "error") { S.err.kalender = ev.error; if (AUTHZ.has(ev.error.code)) S.events = null; }
@@ -2365,9 +2609,9 @@
     S.db.collection("agenten").onSnapshot((q) => { S.agenten = Object.fromEntries(q.docs.map((x) => [x.id, x.data()])); neuZeichnen(); }, aufFehler);
   }
 
-  // ================================================================ Raum: Gehirn & Bahn
-  // three.js wird erst geladen, wenn Du einen der beiden Blicke öffnest. Der Puls
-  // funktioniert ohne WebGL, ohne CDN und ohne diese 300 Zeilen.
+  // ================================================================ Raum: das Gehirn
+  // three.js wird erst geladen, wenn Du den Gehirn-Blick öffnest. Puls, Kalender
+  // und Jarvis funktionieren ohne WebGL, ohne CDN und ohne diese 300 Zeilen.
   let denkt = false;
   const QUELLEN = [
     "https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js",
@@ -2472,18 +2716,6 @@
       transparent: true, opacity: 0.42, depthWrite: false, blending: ADD });
     scene.add(new THREE.Points(wolkeGeo, wolkeMat));
 
-    // Zeitringe für die Bahn
-    const ringe = [];
-    const ringBauen = (farbe, stark) => {
-      const pts = [];
-      for (let i = 0; i <= 64; i++) { const a = (i / 64) * Math.PI * 2; pts.push(new THREE.Vector3(Math.cos(a) * 0.86, Math.sin(a) * 0.6, 0)); }
-      const g = new THREE.BufferGeometry().setFromPoints(pts);
-      const m = new THREE.LineBasicMaterial({ color: farbe, transparent: true, opacity: stark, depthWrite: false, blending: ADD });
-      const l = new THREE.Line(g, m); l.visible = false; scene.add(l);
-      return { line: l, mat: m };
-    };
-    for (let i = 0; i < 5; i++) ringe.push(ringBauen(i === 0 ? 0x89aece : 0x4a4e58, i === 0 ? 0.34 : 0.14));
-
     const labelsEl = $("#labels");
     const lebend = new Map(), kanten = new Map(), vorrat = [], pulse = [];
     let ersterLauf = true;
@@ -2556,48 +2788,8 @@
           art: "organ", ref: o.id, glanz: n ? 1 : 0.55 };
       });
     }
-    const zFuerTage = (t) => t < 0 ? 1.05 + Math.min(0.32, -t * 0.05) : 0.95 - clamp(t, 0, BAHN_TAGE) / BAHN_TAGE * 1.9;
-    function defsBahn() {
-      const raus = [];
-      for (const t of aufgaben()) {
-        if (t.tage == null || t.tage > BAHN_TAGE) continue;
-        const [ton, w] = dringlich(t);
-        raus.push({ id: "aufgabe:" + t.id, label: kurz(ohnePrefix(t.titel), 30), art: "aufgabe", ref: t.id,
-          farbe: "#A498BE", ton: ton === "ruhig" ? null : ton, w, major: t.tage <= 1,
-          pos: [-0.55 + jitter(t.id, 0.22), 0.02 + jitter(t.id + "y", 0.12), zFuerTage(t.tage)] });
-      }
-      for (const e of termine()) {
-        const vl = !!e.vorlesung;
-        raus.push({ id: "termin:" + e.id,
-          label: kurz((e.uhrzeit ? e.uhrzeit + " " : "") + (vl ? e.vorlesung.kurz : e.titel), 30),
-          art: "termin", ref: e.id, farbe: vl ? "#8B93B8" : "#7BB3AA", ton: null,
-          w: vl ? 0.8 : (e.tage === 0 ? 1.25 : 0.95), glanz: vl ? 0.6 : 1,
-          major: e.tage === 0 && !vl,
-          pos: [-0.55 + jitter(e.id, 0.22), (vl ? 0.66 : 0.4) + jitter(e.id + "y", 0.09), zFuerTage(e.tage)] });
-      }
-      for (const t of themenAktiv()) {
-        raus.push({ id: "thema:" + t.id, label: kurz(t.name, 26), art: "thema", ref: t.id, farbe: "#8B93B8",
-          ton: t.tage <= 0 ? "soon" : null, w: t.tage <= 0 ? 1.05 : 0.8, major: false,
-          pos: [-0.55 + jitter(t.id, 0.24), -0.3 + jitter(t.id + "y", 0.1), zFuerTage(Math.max(0, t.tage))] });
-      }
-      for (const w of warnungen()) {
-        raus.push({ id: "warnung:" + w.id, label: kurz(w.titel, 28), art: "warnung", ref: w.id, farbe: "#D9645A",
-          ton: "alarm", w: 1.15, major: true, pos: [0.55 + jitter(w.id, 0.2), -0.42 + jitter(w.id + "y", 0.12), zFuerTage(0)] });
-      }
-      for (const r of laeufe().filter((x) => x.zeit.slice(0, 10) === heute())) {
-        raus.push({ id: "lauf:" + r.id, label: kurz(r.gruppe, 22), art: "lauf", ref: r.id, farbe: "#C39C61",
-          ton: null, w: 0.8, major: false, pos: [0.58 + jitter(r.id, 0.2), -0.62 + jitter(r.id + "y", 0.1), zFuerTage(0)] });
-      }
-      // Geplante Morgenläufe erscheinen erst, wenn der Takt wirklich eingerichtet ist.
-      if ((S.zustand?.phasen || []).find((p) => p.nr === 4)?.status === "erledigt")
-        for (let d = 1; d <= BAHN_TAGE; d++)
-          raus.push({ id: "takt:" + d, label: d === 1 ? "Morgenlauf" : "", art: "takt", ref: null,
-            farbe: "#89AECE", ton: null, w: 0.7, major: false, pos: [0.55, -0.5, zFuerTage(d)], glanz: 0.5 });
-      return raus;
-    }
-
     function sync() {
-      const defs = blick === "gehirn" ? defsGehirn() : defsBahn();
+      const defs = defsGehirn();
       const gesehen = new Set(), bewegt = new Set();
       for (const def of defs) {
         gesehen.add(def.id);
@@ -2609,7 +2801,7 @@
       for (const k of lebend.values()) k.nachbarn = [];
 
       const gewollt = new Set();
-      if (blick === "gehirn") {
+      {
         for (const [a, b] of KANTEN) {
           const A = lebend.get("organ:" + a), B = lebend.get("organ:" + b);
           if (!A || !B) continue;
@@ -2622,15 +2814,6 @@
       }
       for (const id of [...kanten.keys()]) if (!gewollt.has(id)) kanteWeg(id);
       for (const e of kanten.values()) { e.a.nachbarn.push(e); e.b.nachbarn.push(e); }
-      for (const r of ringe) r.line.visible = false;
-      if (blick === "bahn") {
-        ringe[0].line.position.z = zFuerTage(0); ringe[0].line.visible = true;
-        let i = 1;
-        for (let d = 1; d <= BAHN_TAGE && i < ringe.length; d++) {
-          const iso = isoTag(tagNr(heute()) + d);
-          if (new Date(tagNr(iso) * 864e5).getUTCDay() === 6) { ringe[i].line.position.z = zFuerTage(d); ringe[i].line.visible = true; i++; }
-        }
-      }
       ersterLauf = false;
     }
 
@@ -2821,7 +3004,9 @@
 
   // ---------------------------------------------------------------- Start
   blickSetzen((location.hash || "").replace("#", "") || "puls");
-  renderPuls(); renderStatus(); renderOrgane();
+  renderPuls(); renderStatus();
+  sheetZiehen($("#blatt"), $("#blattGriff"), blattZu);
+  sheetZiehen($("#organe"), $("#organeGriff"), () => organeZeigen(false));
 
   (async () => {
     const hol = (n) => (window.claude?.use ? window.claude.use(n).catch(() => null) : Promise.resolve(null));
