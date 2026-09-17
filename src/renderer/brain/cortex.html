@@ -188,7 +188,9 @@
   .waehler button small{font-family:var(--f-mono);font-size:10.5px;color:var(--mist)}
 
   /* Balken (Wiederholen, Speicher) */
-  .bar{height:3px;border-radius:2px;background:var(--line);overflow:hidden;margin-top:6px}
+  /* Der Balken steht als <span> in einer Textzeile — ohne display:block
+     verschluckt der Inline-Fluss seine Höhe und er ist unsichtbar. */
+  .bar{display:block;height:3px;border-radius:2px;background:var(--line);overflow:hidden;margin-top:6px}
   .bar b{display:block;height:100%;background:var(--c,var(--synapse));border-radius:2px}
 
   /* ---------- Antwort des Eingabefelds ---------- */
@@ -216,6 +218,9 @@
   .feld input,.feld select{background:var(--shell);border:1px solid var(--line-2);border-radius:var(--r);
     color:var(--bone);font:inherit;font-size:13.5px;padding:8px 10px;min-width:0}
   .feld input:focus,.feld select:focus{outline:2px solid var(--synapse);outline-offset:-1px;border-color:var(--synapse)}
+  .feld textarea{background:var(--shell);border:1px solid var(--line-2);border-radius:var(--r);
+    color:var(--bone);font:inherit;font-size:13.5px;padding:8px 10px;min-width:0;resize:vertical}
+  .feld textarea:focus{outline:2px solid var(--synapse);outline-offset:-1px;border-color:var(--synapse)}
   .feld-reihe{display:grid;grid-template-columns:1fr 1fr;gap:9px}
   .vorschlaege{list-style:none;margin:0;padding:0;display:flex;flex-direction:column}
   .vorschlaege li + li{border-top:1px solid var(--line)}
@@ -389,6 +394,15 @@
   .kal-punkte i.aufgabe{--c:var(--bone-2)}
   .kal-punkte i.alarm{--c:var(--alarm)}
   .kal-punkte i.vl{--c:var(--line-2)}
+  .kal-punkte i.klausur{--c:var(--alarm);width:5px;height:5px}
+  .kal-tag.klausur b{color:var(--alarm);font-weight:500}
+  .kal-neu{margin-left:auto}
+  .modwahl{display:flex;flex-direction:column;padding:2px 11px;border-radius:var(--r);background:var(--raise)}
+  .modzeile{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:10px;
+    padding:9px 0;cursor:pointer;font-size:13.5px}
+  .modzeile + .modzeile{border-top:1px solid var(--line)}
+  .modzeile input{margin:0;accent-color:var(--synapse)}
+  .modzeile small{font-family:var(--f-mono);font-size:10.5px;color:var(--mist)}
 
   .kal-tage{display:flex;flex-direction:column;gap:22px}
   .kal-tagblock{display:flex;flex-direction:column;gap:2px;scroll-margin-top:96px}
@@ -628,7 +642,7 @@
   const S = {
     mcp: null, db: null, sample: null, caps: false,
     projektMeta: null, projekt: null, events: null,
-    zustand: null, bericht: null, themen: [], vorschlaege: [], agenten: {}, journal: [],
+    zustand: null, bericht: null, themen: [], klausuren: [], vorschlaege: [], agenten: {}, journal: [],
     plan: null, tafelStand: null,
     err: { todoist: null, kalender: null, db: null },
   };
@@ -1218,11 +1232,13 @@
   function wiederholenSektion() {
     if (!S.db) return "";
     const aktiv = themenAktiv().sort((a, b) => a.tage - b.tage);
-    if (!aktiv.length) return sekt("Wiederholen", "", leer(S.themen.length ? "Für die laufenden Module steht nichts an." : "Noch keine Lernthemen angelegt."));
+    const neuKnopf = `<div class="z-a" style="margin:6px 0 0">${btn(`data-do="themaNeu"`, "Thema anlegen", "mini")}</div>`;
+    if (!aktiv.length) return sekt("Wiederholen", "",
+      leer(S.themen.length ? "Für die laufenden Module steht nichts an." : "Noch nichts im Gedächtnis. Leg das erste Thema an.") + neuKnopf);
     const faellig = aktiv.filter((t) => t.tage <= 0);
     const zeig = faellig.length ? faellig.slice(0, 6) : aktiv.slice(0, 3);
     return sekt("Wiederholen", faellig.length ? `${faellig.length} fällig` : "nichts fällig",
-      `<div class="sekt">${zeig.map(themaZeile).join("")}</div>`);
+      `<div class="sekt">${zeig.map(themaZeile).join("")}</div>${neuKnopf}`);
   }
 
   const ohneLive = () => S.caps && !S.mcp && !S.db;
@@ -1240,7 +1256,7 @@
         <div class="z-a">${btn(`data-do="blick" data-blick="gehirn"`, "Aufbau ansehen", "mini")}</div></div>`, true);
       return;
     }
-    el.innerHTML = planSektion() + jetztSektion() + kommtSektion() + rechnerSektion() + wiederholenSektion();
+    el.innerHTML = klausurSektion() + planSektion() + jetztSektion() + kommtSektion() + rechnerSektion() + wiederholenSektion();
   }
 
   // ---------------------------------------------------------------- Statuszeile
@@ -1293,6 +1309,7 @@
     if (art === "aufgabe") return aufgaben().find((t) => t.id === id) || null;
     if (art === "termin") return termine().find((e) => e.id === id) || null;
     if (art === "thema") return themen().find((t) => t.id === id) || null;
+    if (art === "klausur") return klausuren().find((k) => k.id === id) || null;
     if (art === "warnung") return warnungen().find((w) => w.id === id) || null;
     return null;
   }
@@ -1323,7 +1340,28 @@
         ${aktionen(x)}`, { art, id });
       return;
     }
-    if (art === "thema") { blattZeigen(themaZeile(x), { art, id }); return; }
+    if (art === "thema") {
+      blattZeigen(`${themaZeile(x)}
+        <div class="z-a" style="margin:0">${btn(`data-do="themaWeg" data-id="${esc(x.id)}"`, "Aus dem Gedächtnis nehmen", "mini still")}</div>`,
+        { art, id });
+      return;
+    }
+    if (art === "klausur") {
+      const st = klausurStand(x), T = klausurThemen(x);
+      const mods = [...new Set(T.map((t) => t.modul))];
+      blattZeigen(`<h3>${esc(x.titel)}</h3>
+        ${fakten([["Wann", esc(langDatum(x.datum) + (x.uhrzeit ? ", " + x.uhrzeit : ""))],
+          ["Noch", esc(klausurWann(x))], ["Ort", esc(x.ort || "")],
+          ["Module", esc(mods.join(" · "))],
+          ["Themen", st ? esc(`${st.anzahl}, davon ${st.faellig} fällig`) : ""]])}
+        ${x.notiz ? `<p>${esc(x.notiz)}</p>` : ""}
+        ${st ? mods.map((m) => block(m, T.filter((t) => t.modul === m).map(themaZeile).join(""))).join("")
+             : `<p class="leer">Dieser Klausur ist noch kein Modul mit Lernthemen zugeordnet — dann kann sie auch nicht rückwärts rechnen.</p>`}
+        <div class="z-a" style="margin:0">
+          ${btn(`data-do="themaNeu"`, "Thema anlegen", "mini")}
+          ${btn(`data-do="klausurWeg" data-id="${esc(x.id)}"`, "Klausur streichen", "mini still")}</div>`, { art, id });
+      return;
+    }
     if (art === "warnung") {
       blattZeigen(`<h3>${esc(x.titel)}</h3>${fakten([["Datei", esc(x.detail || "")], ["Seit", x.seit ? esc(stempel(x.seit)) : ""],
         ["Stufe", esc(x.stufe || "")]])}${x.rat ? `<p>${esc(x.rat)}</p>` : ""}
@@ -1365,9 +1403,13 @@
     } else if (id === "gedaechtnis") {
       if (!S.db) inhalt += p("Der Speicher ist in dieser Ansicht nicht verfügbar.");
       else {
-        const alle = themen();
+        const alle = themen(), K = klausuren();
         inhalt += fakten([["Themen", esc(zahl(alle.length))], ["Fällig", esc(zahl(themenFaellig().length))],
           ["Intervalle", INTERVALLE.join(" · ") + " Tage"]]);
+        inhalt += `<div class="z-a" style="margin:0">
+          ${btn(`data-do="themaNeu"`, "Thema anlegen", "mini primary")}
+          ${btn(`data-do="klausurNeu"`, "Klausur eintragen", "mini")}</div>`;
+        if (K.length) inhalt += block("Klausuren", K.map((k) => klausurZeile(k)).join(""));
         for (const m of [...new Set(alle.map((t) => t.modul))])
           inhalt += block(m || "ohne Modul", alle.filter((t) => t.modul === m)
             .sort((a, b) => (a.reihenfolge || 0) - (b.reihenfolge || 0)).map(themaZeile).join(""));
@@ -2046,6 +2088,40 @@
         break;
       }
       case "planwahl": blattPlanwahl(); break;
+      case "themaNeu": blattThemaNeu(); break;
+      case "klausurNeu": blattKlausurNeu(); break;
+      case "themaAnlegen": {
+        const zeilen = ($("#thNamen")?.value || "").split("\n").map((z) => z.trim()).filter(Boolean);
+        if (!zeilen.length) { toast("Ohne Namen geht es nicht."); break; }
+        const modul = $("#thModul")?.value || null;
+        el.disabled = true;
+        if (await themaAnlegen(zeilen.map((name) => ({ name, modul })))) blattZu(); else el.disabled = false;
+        break;
+      }
+      case "klausurAnlegen": {
+        const fach = ($("#klFach")?.value || "").trim();
+        const datum = $("#klDatum")?.value || "";
+        if (!fach) { toast("Ohne Fach geht es nicht."); break; }
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(datum)) { toast("Bitte ein Datum wählen."); break; }
+        const mods = [...blattBody.querySelectorAll("input[data-mod]:checked")].map((x) => x.dataset.mod);
+        el.disabled = true;
+        if (await klausurAnlegen([{ fach, datum, module: mods,
+          uhrzeit: $("#klZeit")?.value || null, ort: $("#klOrt")?.value || null }])) blattZu();
+        else el.disabled = false;
+        break;
+      }
+      case "themaWeg": {
+        const t = findeSache("thema", d.id);
+        el.disabled = true;
+        if (t && await themaLoeschen(t)) blattZu(); else el.disabled = false;
+        break;
+      }
+      case "klausurWeg": {
+        const k = findeSache("klausur", d.id);
+        el.disabled = true;
+        if (k && await klausurLoeschen(k)) blattZu(); else el.disabled = false;
+        break;
+      }
       case "planweg": await planSetzen(planIds().filter((x) => x !== d.id)); break;
       case "planwaehle": {
         const ids = planIds();
@@ -2097,6 +2173,174 @@
     else if (!e.shiftKey && document.activeElement === letzte) { e.preventDefault(); erste.focus(); }
   });
 
+  // ---------------------------------------------------------------- Gedächtnis füllen
+  // Bis hierher konnte das Gedächtnis nur wiederholen, was schon drinstand —
+  // es hatte keinen Eingang. Das hier ist der Eingang, und der Ausgang gleich mit.
+  const neueId = (p) => p + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+
+  async function themaAnlegen(liste) {
+    if (!S.db) { toast("Der Speicher ist in dieser Ansicht nicht verfügbar."); return 0; }
+    let n = 0;
+    for (const x of liste.slice(0, 15)) {
+      const name = String(x?.name ?? "").trim().slice(0, 140);
+      if (!name) continue;
+      const modul = String(x?.modul ?? "").trim() || null;
+      try {
+        // Stufe 0 und heute fällig: ein neues Thema will einmal angesehen werden,
+        // bevor die Abstände anfangen zu wachsen.
+        await S.db.doc("themen/" + neueId("t")).set({
+          name, modul, stufe: 0, faellig: heute(), zuletzt: null,
+          wiederholungen: 0, angelegt: new Date().toISOString(),
+        });
+        n++;
+      } catch (e) { toast(dbText(e)); break; }
+    }
+    if (n) { funke("gedaechtnis"); toast(n === 1 ? "Steht im Gedächtnis, ab heute fällig." : `${n} Themen stehen im Gedächtnis.`); }
+    return n;
+  }
+
+  async function themaLoeschen(t) {
+    if (!S.db) return false;
+    const { tage, id, ...rein } = t;                      // abgeleitetes wieder abstreifen
+    try {
+      await S.db.doc("themen/" + t.id).delete();
+      toast(`${kurz(t.name, 30)}: aus dem Gedächtnis genommen.`, async () => {
+        try { await S.db.doc("themen/" + t.id).set(rein); }
+        catch (e) { const s = dbText(e); throw Object.assign(new Error(s), { __text: s }); }
+      });
+      return true;
+    } catch (e) { toast(dbText(e)); return false; }
+  }
+
+  // Module, aus denen gewählt werden kann: was schon im Gedächtnis steht, plus die Fächer.
+  const moduleMitThemen = () => [...new Set(S.themen.map((t) => t.modul).filter(Boolean))].sort();
+  const module = () => [...new Set([...moduleMitThemen(), ...sektionen().map((s) => s.name)])];
+
+  function blattThemaNeu() {
+    blattZeigen(`<h3>Ins Gedächtnis legen</h3>
+      <p>Ein Thema pro Zeile. Jedes kommt nach ${INTERVALLE.join(", ")} Tagen wieder dran — und heute zum ersten Mal.</p>
+      <div class="felder">
+        <div class="feld"><label for="thNamen">Themen</label>
+          <textarea id="thNamen" rows="4" placeholder="Ableitungsregeln&#10;Grenzwerte&#10;Stetigkeit"></textarea></div>
+        <div class="feld"><label for="thModul">Modul</label>
+          <select id="thModul"><option value="">ohne Modul</option>
+            ${module().map((m) => `<option value="${esc(m)}">${esc(m)}</option>`).join("")}</select></div>
+      </div>
+      <div class="z-a" style="margin:0">${btn(`data-do="themaAnlegen"`, "Anlegen", "primary")}</div>`);
+  }
+
+  // ---------------------------------------------------------------- Klausuren
+  // Der Fixpunkt, auf den alles zuläuft. Eine Klausur rechnet rückwärts: sie zeigt
+  // nicht nur, wann sie ist, sondern wie weit die Themen ihres Moduls sind.
+  function klausuren() {
+    return (S.klausuren || [])
+      .filter((k) => /^\d{4}-\d{2}-\d{2}$/.test(k.datum || ""))
+      .map((k) => ({ ...k, art: "klausur", titel: k.fach || "Klausur", tage: tageBis(k.datum) }))
+      .filter((k) => k.tage >= -1)                        // gestern ist noch interessant, vorletzte Woche nicht
+      .sort((a, b) => a.tage - b.tage);
+  }
+
+  // Welche Themen zu einer Klausur gehören. Ein Fach hat mehrere Module — die
+  // Mathe-Klausur prüft Algebraische Grundlagen, Lineare Algebra und Analysis —
+  // deshalb zählt die Modulliste, und das Fach nur, wenn es selbst als Modul auftritt.
+  function klausurThemen(k) {
+    const namen = new Set([...(Array.isArray(k.module) ? k.module : []), k.fach].filter(Boolean));
+    return themen().filter((t) => t.modul && namen.has(t.modul))
+      .sort((a, b) => String(a.modul).localeCompare(String(b.modul)) || (a.reihenfolge || 0) - (b.reihenfolge || 0));
+  }
+
+  // Reife: wo diese Themen im Intervall-Stapel stehen, 0 bis 1.
+  function klausurStand(k) {
+    const T = klausurThemen(k);
+    if (!T.length) return null;
+    const oben = INTERVALLE.length - 1;
+    return { anzahl: T.length, faellig: T.filter((t) => t.tage <= 0).length,
+      reife: T.reduce((s, t) => s + t.stufe, 0) / (T.length * oben) };
+  }
+
+  const klausurTon = (k) => k.tage < 0 ? "satt" : k.tage <= 7 ? "alarm" : k.tage <= 21 ? "soon" : "ruhig";
+  const klausurWann = (k) => k.tage < 0 ? "vorbei" : k.tage === 0 ? "heute" : k.tage === 1 ? "morgen" : `noch ${k.tage} Tage`;
+
+  function klausurZeile(k, opt = {}) {
+    const st = klausurStand(k);
+    const farbe = st ? (st.reife > 0.55 ? "var(--ok)" : st.reife > 0.25 ? "var(--soon)" : "var(--alarm)") : "var(--line-2)";
+    const meta = [opt.ohneDatum ? "" : langDatum(k.datum), k.uhrzeit || "", k.ort || ""].filter(Boolean).join(" · ");
+    return `<div class="z ${klausurTon(k)}"><i></i>
+      <div class="z-t"><button type="button" data-do="blatt" data-art="klausur" data-id="${esc(k.id)}">${esc(k.titel)}</button></div>
+      <div class="z-r">${esc(klausurWann(k))}</div>
+      <div class="z-m">${esc(meta)}${meta && st ? " · " : ""}${st
+        ? `${st.anzahl} ${st.anzahl === 1 ? "Thema" : "Themen"}${st.faellig ? `, ${st.faellig} fällig` : ""}
+           <span class="bar" style="--c:${farbe}"><b style="width:${Math.round(st.reife * 100)}%"></b></span>`
+        : (meta ? " · " : "") + "keine Lernthemen zugeordnet"}</div>
+    </div>`;
+  }
+
+  function klausurSektion() {
+    if (!S.db) return "";
+    const K = klausuren();
+    if (!K.length) return "";
+    const naechste = K.find((k) => k.tage >= 0);
+    return sekt("Klausuren", naechste ? klausurWann(naechste) : "",
+      `<div class="sekt">${K.slice(0, 4).map((k) => klausurZeile(k)).join("")}</div>`, true);
+  }
+
+  async function klausurAnlegen(liste) {
+    if (!S.db) { toast("Der Speicher ist in dieser Ansicht nicht verfügbar."); return 0; }
+    let n = 0;
+    for (const x of liste.slice(0, 10)) {
+      const fach = String(x?.fach ?? "").trim().slice(0, 120);
+      const datum = String(x?.datum ?? "");
+      if (!fach || !/^\d{4}-\d{2}-\d{2}$/.test(datum)) continue;
+      try {
+        await S.db.doc("klausuren/" + neueId("k")).set({
+          fach, datum,
+          uhrzeit: /^\d{2}:\d{2}$/.test(String(x?.uhrzeit ?? "")) ? String(x.uhrzeit) : null,
+          module: (Array.isArray(x?.module) ? x.module : []).map((m) => String(m).trim()).filter(Boolean).slice(0, 12),
+          ort: String(x?.ort ?? "").trim().slice(0, 120) || null,
+          notiz: String(x?.notiz ?? "").trim().slice(0, 400) || null,
+          angelegt: new Date().toISOString(),
+        });
+        n++;
+      } catch (e) { toast(dbText(e)); break; }
+    }
+    if (n) toast(n === 1 ? "Klausur steht im Kalender." : `${n} Klausuren stehen im Kalender.`);
+    return n;
+  }
+
+  async function klausurLoeschen(k) {
+    if (!S.db) return false;
+    const { tage, art, titel, id, ...rein } = k;
+    try {
+      await S.db.doc("klausuren/" + k.id).delete();
+      toast(`${kurz(k.titel, 30)}: gestrichen.`, async () => {
+        try { await S.db.doc("klausuren/" + k.id).set(rein); }
+        catch (e) { const s = dbText(e); throw Object.assign(new Error(s), { __text: s }); }
+      });
+      return true;
+    } catch (e) { toast(dbText(e)); return false; }
+  }
+
+  function blattKlausurNeu() {
+    const mods = moduleMitThemen();
+    blattZeigen(`<h3>Klausur eintragen</h3>
+      <p>Sie wird zum Fixpunkt: der Kalender zeigt sie, und der Puls rechnet rückwärts, wie weit die Themen ihrer Module sind.</p>
+      <div class="felder">
+        <div class="feld"><label for="klFach">Fach</label>
+          <input id="klFach" list="klFaecher" placeholder="z. B. Mathematik (FOM)" autocomplete="off">
+          <datalist id="klFaecher">${module().map((m) => `<option value="${esc(m)}"></option>`).join("")}</datalist></div>
+        <div class="feld-reihe">
+          <div class="feld"><label for="klDatum">Datum</label><input id="klDatum" type="date"></div>
+          <div class="feld"><label for="klZeit">Uhrzeit</label><input id="klZeit" type="time"></div>
+        </div>
+        <div class="feld"><label for="klOrt">Ort</label><input id="klOrt" placeholder="Raum, Gebäude"></div>
+        ${mods.length ? `<div class="feld"><label>Module, die drankommen</label>
+          <div class="modwahl">${mods.map((m, i) => `<label class="modzeile" for="klMod${i}">
+            <input type="checkbox" id="klMod${i}" data-mod="${esc(m)}"><span>${esc(m)}</span>
+            <small>${themen().filter((t) => t.modul === m).length}</small></label>`).join("")}</div></div>` : ""}
+      </div>
+      <div class="z-a" style="margin:0">${btn(`data-do="klausurAnlegen"`, "Eintragen", "primary")}</div>`);
+  }
+
   // ---------------------------------------------------------------- Kalender
   // Sechs Wochen ab dem Montag dieser Woche — genau das Fenster, das auch
   // geladen wird. Ein Monatsraster wäre die gewohntere Form, würde aber Tage
@@ -2112,9 +2356,10 @@
 
   function kalTage() {
     const von = kalStart(), karte = new Map();
-    for (let i = 0; i < KAL_WOCHEN * 7; i++) karte.set(isoTag(von + i), { termine: [], aufgaben: [] });
+    for (let i = 0; i < KAL_WOCHEN * 7; i++) karte.set(isoTag(von + i), { termine: [], aufgaben: [], klausuren: [] });
     for (const e of termine()) karte.get(e.datum)?.termine.push(e);
     for (const t of aufgaben()) if (t.datum && karte.has(t.datum)) karte.get(t.datum).aufgaben.push(t);
+    for (const k of klausuren()) if (karte.has(k.datum)) karte.get(k.datum).klausuren.push(k);
     return karte;
   }
 
@@ -2123,10 +2368,11 @@
     for (let i = 0; i < KAL_WOCHEN * 7; i++) {
       const iso = isoTag(von + i), tag = karte.get(iso), nr = +iso.slice(8, 10);
       const punkte = [
+        ...tag.klausuren.map(() => "klausur"),
         ...tag.termine.map((e) => (e.vorlesung ? "vl" : "termin")),
         ...tag.aufgaben.map((t) => (t.labels?.includes("abgabe") ? "alarm" : "aufgabe")),
       ].slice(0, 4);
-      const kl = ["kal-tag", iso === h ? "heute" : "", iso < h ? "blass" : "",
+      const kl = ["kal-tag", iso === h ? "heute" : "", iso < h ? "blass" : "", tag.klausuren.length ? "klausur" : "",
         iso === kalGewaehlt ? "gewaehlt" : "", nr === 1 && i > 0 ? "monatswechsel" : ""].filter(Boolean).join(" ");
       const zahl = punkte.length ? `, ${punkte.length} ${punkte.length === 1 ? "Eintrag" : "Einträge"}` : "";
       zellen.push(`<button type="button" class="${kl}" data-do="kaltag" data-datum="${iso}"
@@ -2134,7 +2380,8 @@
         <span class="kal-punkte">${punkte.map((k) => `<i class="${k}"></i>`).join("")}</span></button>`);
     }
     const bis = isoTag(von + KAL_WOCHEN * 7 - 1);
-    return `<div class="kal-kopf"><h2>Sechs Wochen</h2><em>${esc(kurzDatum(isoTag(von)))} – ${esc(kurzDatum(bis))}</em></div>
+    return `<div class="kal-kopf"><h2>Sechs Wochen</h2><em>${esc(kurzDatum(isoTag(von)))} – ${esc(kurzDatum(bis))}</em>
+      ${S.db ? `<span class="kal-neu">${btn(`data-do="klausurNeu"`, "Klausur", "mini")}</span>` : ""}</div>
       <div class="kal-wochentage">${WOCHENTAGE.map((w) => `<span>${w}</span>`).join("")}</div>
       <div class="kal-gitter">${zellen.join("")}</div>`;
   }
@@ -2152,11 +2399,13 @@
       const tag = karte.get(iso);
       const alles = [...tag.termine, ...tag.aufgaben]
         .sort((a, b) => (a.uhrzeit || "99:99").localeCompare(b.uhrzeit || "99:99"));
-      if (!alles.length && iso !== h) continue;                // leere Tage stehen schon im Raster
+      if (!alles.length && !tag.klausuren.length && iso !== h) continue;   // leere Tage stehen schon im Raster
       const wann = iso === h ? "heute" : rel(tageBis(iso));
       bloecke.push(`<div class="kal-tagblock${iso === h ? " ist-heute" : ""}" id="kal-${iso}">
         <div class="kal-datum"><h3>${esc(langDatum(iso))}</h3><span>${esc(wann)}</span></div>
-        ${alles.length ? `<div class="sekt">${alles.map((x) => zeile(x, { ohneDatum: true })).join("")}</div>`
+        ${tag.klausuren.length || alles.length
+          ? `<div class="sekt">${tag.klausuren.map((k) => klausurZeile(k, { ohneDatum: true })).join("")
+             }${alles.map((x) => zeile(x, { ohneDatum: true })).join("")}</div>`
           : leer("Heute steht nichts an.")}</div>`);
     }
     return bloecke.length ? `<div class="kal-tage">${bloecke.join("")}</div>`
@@ -2244,7 +2493,8 @@
   // Während Claude arbeitet, sagt jeder Griff Bescheid — sonst sieht eine
   // Runde mit drei Werkzeugen aus wie eine Minute Stillstand.
   const WERKZEUG_WORT = { aufgaben_erledigen: "hakt ab", verschieben: "verschiebt", anlegen: "legt an",
-    thema_wiederholt: "Gedächtnis", tagesplan_setzen: "Tagesplan" };
+    thema_wiederholt: "Gedächtnis", thema_anlegen: "merkt sich", klausur_anlegen: "Klausur",
+    tagesplan_setzen: "Tagesplan" };
   function jChip(name) {
     if (!jAktiv) return;
     let box = jAktiv.querySelector(".j-tools");
@@ -2297,7 +2547,14 @@
         : ["(keine)"]), "");
 
     const TH = themenAktiv().slice(0, 20);
-    if (TH.length) L.push("LERNTHEMEN (id | thema | fällig am):", ...TH.map((t) => `- ${t.id} | ${t.name} | ${t.faellig}`), "");
+    if (TH.length) L.push("LERNTHEMEN (id | thema | modul | fällig am):",
+      ...TH.map((t) => `- ${t.id} | ${t.name} | ${t.modul || "-"} | ${t.faellig}`), "");
+    const alleMod = moduleMitThemen();
+    if (alleMod.length) L.push("MODULE (auch noch nicht laufende): " + alleMod.join(", "), "");
+
+    const K = klausuren();
+    if (K.length) L.push("KLAUSUREN (fach | datum | in Tagen):",
+      ...K.map((k) => `- ${k.fach} | ${k.datum}${k.uhrzeit ? " " + k.uhrzeit : ""} | ${k.tage}`), "");
 
     const ids = planIds();
     if (S.db) L.push("DREI FÜR HEUTE:", ...(ids.length ? ids.map((id) => "- " + id) : ["(noch nichts gewählt)"]), "");
@@ -2400,6 +2657,39 @@
           if (!t) return "Dieses Thema steht nicht in der Lage.";
           const a = ["wiederholt", "sitzt", "morgen"].includes(txt(art)) ? txt(art) : "wiederholt";
           return (await wiederholen(t, a)) ? "Gemerkt." : "Hat nicht geklappt.";
+        },
+      });
+
+      T.push({
+        name: "thema_anlegen",
+        description: "Legt Lernthemen ins Gedächtnis. Sie sind sofort fällig und kommen dann nach 1, 3, 7, 16 und 35 Tagen wieder. Ein Thema ist eine Sache, die man abfragen kann, kein Arbeitsauftrag.",
+        inputSchema: { type: "object", properties: {
+          themen: { type: "array", items: { type: "object", properties: {
+            name: { type: "string" },
+            modul: { type: "string", description: "exakter Name aus FÄCHER, sonst weglassen" },
+          }, required: ["name"] } } }, required: ["themen"] },
+        async execute({ themen: liste }) {
+          jChip("thema_anlegen");
+          const n = await themaAnlegen(Array.isArray(liste) ? liste : []);
+          return n ? `${n} ins Gedächtnis gelegt, heute zum ersten Mal fällig.` : "Nichts angelegt.";
+        },
+      });
+
+      T.push({
+        name: "klausur_anlegen",
+        description: "Trägt eine Klausur ein. Sie wird zum Fixpunkt: der Puls rechnet rückwärts, wie weit die Lernthemen dieses Fachs sind.",
+        inputSchema: { type: "object", properties: {
+          fach: { type: "string", description: "möglichst exakter Name aus FÄCHER" },
+          datum: { type: "string", description: "YYYY-MM-DD" },
+          uhrzeit: { type: "string", description: "HH:MM, optional" },
+          ort: { type: "string", description: "Raum oder Gebäude, optional" },
+          module: { type: "array", items: { type: "string" },
+            description: "Module, die drankommen — exakte Namen aus MODULE. Ein Fach hat oft mehrere." },
+        }, required: ["fach", "datum"] },
+        async execute({ fach, datum, uhrzeit, ort, module: mods }) {
+          jChip("klausur_anlegen");
+          return (await klausurAnlegen([{ fach, datum, uhrzeit, ort, module: mods }]))
+            ? "Klausur steht." : "Das Datum muss YYYY-MM-DD sein und ein Fach dabei.";
         },
       });
 
@@ -2605,6 +2895,7 @@
       if (blick === "jarvis") jarvisAufbauen();
     });
     S.db.collection("themen").onSnapshot((q) => { S.themen = q.docs.map((x) => ({ id: x.id, ...x.data() })); neuZeichnen(); }, aufFehler);
+    S.db.collection("klausuren").onSnapshot((q) => { S.klausuren = q.docs.map((x) => ({ id: x.id, ...x.data() })); neuZeichnen(); }, aufFehler);
     S.db.collection("vorschlaege").onSnapshot((q) => { S.vorschlaege = q.docs.map((x) => ({ id: x.id, ...x.data() })); neuZeichnen(); }, aufFehler);
     S.db.collection("agenten").onSnapshot((q) => { S.agenten = Object.fromEntries(q.docs.map((x) => [x.id, x.data()])); neuZeichnen(); }, aufFehler);
   }
