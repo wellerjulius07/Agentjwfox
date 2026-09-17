@@ -300,6 +300,40 @@
     .spark{animation:none}
     .tafel-karte,#blatt{animation:none}
   }
+
+  /* ---------- Jarvis ---------- */
+  #jarvis{flex:1;min-height:0;display:flex;flex-direction:column;
+    max-width:620px;margin:0 auto;width:100%;padding:0 16px}
+  #jarvis[hidden]{display:none!important}
+  body[data-blick="jarvis"] #shell{height:100%}
+  body[data-blick="jarvis"] .ask{display:none}
+  #jarvisLog{flex:1;min-height:0;overflow-y:auto;display:flex;flex-direction:column;gap:15px;padding:4px 0 14px}
+  .j-turn{display:flex;flex-direction:column;gap:5px}
+  .j-wer{font-family:var(--f-mono);font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--mist)}
+  .j-text{white-space:pre-wrap;overflow-wrap:anywhere;text-wrap:pretty}
+  .j-du{align-items:flex-start}
+  .j-du .j-text{background:var(--raise);border:1px solid var(--line);border-radius:var(--r);padding:10px 13px}
+  .j-fehler .j-text{color:#FFC4C6}
+  .j-tools{display:flex;flex-wrap:wrap;gap:5px;margin-top:2px}
+  .j-tool{font-family:var(--f-mono);font-size:10px;color:var(--mist);border:1px solid var(--line);
+    border-radius:10px;padding:1px 8px;line-height:17px}
+  .j-start{margin:auto 0;display:flex;flex-direction:column;gap:11px;color:var(--mist)}
+  .j-start p{margin:0;font-size:13.5px;max-width:42ch}
+  .j-vor{display:flex;flex-wrap:wrap;gap:6px}
+  #jarvisForm{flex:none;display:flex;align-items:flex-end;gap:7px;
+    padding:10px 0 calc(14px + env(safe-area-inset-bottom,0px));border-top:1px solid var(--line)}
+  #jarvisFeld{flex:1;min-width:0;resize:none;background:var(--shell);border:1px solid rgba(134,197,255,.30);
+    border-radius:14px;color:var(--bone);font:inherit;padding:11px 14px;max-height:160px;outline:0}
+  #jarvisFeld:focus{border-color:rgba(134,197,255,.7);box-shadow:0 0 26px rgba(134,197,255,.15)}
+  #jarvisFeld::placeholder{color:var(--mist)}
+  #jarvisSenden{all:unset;cursor:pointer;width:38px;height:38px;flex:none;border-radius:50%;
+    display:grid;place-items:center;background:var(--synapse);color:var(--void);font-size:17px;font-weight:700}
+  #jarvisSenden:hover{background:#A3D3FF}
+  #jarvisSenden:focus-visible{outline:2px solid var(--bone);outline-offset:2px}
+  #jarvisSenden.stopp{background:var(--alarm);color:var(--bone)}
+  /* Der Rückgängig-Hinweis muss über dem Eingabefeld bleiben, nicht darauf. */
+  body[data-blick="jarvis"] #toast{bottom:calc(84px + env(safe-area-inset-bottom,0px))}
+  @media (min-width:980px){ #jarvis{max-width:820px;padding:0 24px} }
 </style>
 
 <div id="canvasLayer" hidden>
@@ -320,6 +354,7 @@
         <button type="button" role="tab" id="tabPuls" aria-selected="true" data-blick="puls">Puls</button>
         <button type="button" role="tab" id="tabBahn" aria-selected="false" data-blick="bahn">Bahn</button>
         <button type="button" role="tab" id="tabGehirn" aria-selected="false" data-blick="gehirn">Gehirn</button>
+        <button type="button" role="tab" id="tabJarvis" aria-selected="false" data-blick="jarvis">Jarvis</button>
       </div>
 
       <form id="ask" class="ask" autocomplete="off">
@@ -337,6 +372,15 @@
 
   <main id="puls">
     <div class="spalten" id="pulsSpalten"></div>
+  </main>
+
+  <main id="jarvis" hidden>
+    <div id="jarvisLog"></div>
+    <form id="jarvisForm" autocomplete="off">
+      <textarea id="jarvisFeld" rows="1" enterkeyhint="send"
+        placeholder="Was liegt an?" aria-label="Nachricht an Jarvis"></textarea>
+      <button type="submit" id="jarvisSenden" aria-label="Senden">&#8593;</button>
+    </form>
   </main>
 
   <nav id="organe" hidden aria-label="Organe"></nav>
@@ -1566,7 +1610,7 @@
     return o;
   }
 
-  async function anlegen(liste) {
+  async function anlegenKern(liste) {
     const fertig = [], schief = [];
     const aufg = liste.filter((p) => p.art === "aufgabe");
     if (aufg.length) {
@@ -1585,12 +1629,6 @@
       catch (e) { schief.push({ p, warum: mcpText(e, "Google Kalender", true) }); }
     }
     const nT = fertig.filter((p) => p.art === "aufgabe").length, nE = fertig.length - nT;
-    const wann = (p) => `${p.datum ? (tageBis(p.datum) === 0 ? "heute" : tageBis(p.datum) === 1 ? "morgen" : kurzDatum(p.datum)) : "ohne Datum"}${p.uhrzeit ? " " + p.uhrzeit : ""}`;
-    zeigeAntwort(`<p>${fertig.length
-      ? `Angelegt: ${[nE ? `${nE} ${nE === 1 ? "Termin" : "Termine"}` : "", nT ? `${nT} ${nT === 1 ? "Aufgabe" : "Aufgaben"}` : ""].filter(Boolean).join(" und ")}.`
-      : "Nichts angelegt."}</p>
-      <ul class="ergebnis">${fertig.map((p) => `<li><span class="ja">✓</span><span>${esc(p.titel)} · ${esc(wann(p))}</span></li>`).join("")}
-      ${schief.map((f) => `<li><span class="nein">!</span><span>${esc(f.p.titel)}: ${esc(f.warum)}</span></li>`).join("")}</ul>${zuKnopf}`);
     if (nT) { frischT(); funke("todoist"); }
     if (nE) { frischK(); funke("kalender"); }
     if (S.db && fertig.length) {
@@ -1599,6 +1637,18 @@
         ...fertig.map((p) => ({ art: p.art, titel: p.titel, datum: p.datum, uhrzeit: p.uhrzeit, fach: p.fach, am })),
         ...S.journal].slice(0, 30) }).catch(() => {});
     }
+    return { fertig, schief, nT, nE };
+  }
+
+  // Der Weg über das Eingabefeld oben: dasselbe Anlegen, nur mit Quittung darunter.
+  async function anlegen(liste) {
+    const { fertig, schief, nT, nE } = await anlegenKern(liste);
+    const wann = (p) => `${p.datum ? (tageBis(p.datum) === 0 ? "heute" : tageBis(p.datum) === 1 ? "morgen" : kurzDatum(p.datum)) : "ohne Datum"}${p.uhrzeit ? " " + p.uhrzeit : ""}`;
+    zeigeAntwort(`<p>${fertig.length
+      ? `Angelegt: ${[nE ? `${nE} ${nE === 1 ? "Termin" : "Termine"}` : "", nT ? `${nT} ${nT === 1 ? "Aufgabe" : "Aufgaben"}` : ""].filter(Boolean).join(" und ")}.`
+      : "Nichts angelegt."}</p>
+      <ul class="ergebnis">${fertig.map((p) => `<li><span class="ja">✓</span><span>${esc(p.titel)} · ${esc(wann(p))}</span></li>`).join("")}
+      ${schief.map((f) => `<li><span class="nein">!</span><span>${esc(f.p.titel)}: ${esc(f.warum)}</span></li>`).join("")}</ul>${zuKnopf}`);
     entwurf = null;
   }
 
@@ -1882,20 +1932,307 @@
     else if (!e.shiftKey && document.activeElement === letzte) { e.preventDefault(); erste.focus(); }
   });
 
+  // ---------------------------------------------------------------- Jarvis
+  // Der Chat ist der zweite Eingang ins selbe Gehirn. Er liest dieselbe Lage,
+  // schreibt über dieselben Funktionen wie jeder Knopf im Puls und hinterlässt
+  // damit dieselben Rückgängig-Hinweise. Was er tut, ist also nie eine
+  // Sonderbehandlung — es ist derselbe Griff, nur mit Worten ausgelöst.
+  const jLog = $("#jarvisLog"), jForm = $("#jarvisForm"), jFeld = $("#jarvisFeld"), jSenden = $("#jarvisSenden");
+  let jTurns = [], jCtl = null, jLaeuft = false, jAktiv = null, jToolsOk = false, jGeladen = false;
+
+  const jUnten = () => { jLog.scrollTop = jLog.scrollHeight; };
+  const jSpeichern = () => {
+    if (!S.db) return;
+    S.db.doc("cortex/jarvis").set({ turns: jTurns.slice(-20), stand: new Date().toISOString() }).catch(() => {});
+  };
+
+  function jBlase(wer, text) {
+    jLog.querySelector(".j-start")?.remove();
+    const el = document.createElement("div");
+    el.className = "j-turn j-" + wer;
+    el.innerHTML = `<div class="j-wer"></div><div class="j-text"></div>`;
+    el.querySelector(".j-wer").textContent = wer === "du" ? "Du" : "Jarvis";
+    el.querySelector(".j-text").textContent = text;
+    jLog.append(el);
+    jUnten();
+    return el;
+  }
+
+  // Während Claude arbeitet, sagt jeder Griff Bescheid — sonst sieht eine
+  // Runde mit drei Werkzeugen aus wie eine Minute Stillstand.
+  const WERKZEUG_WORT = { aufgaben_erledigen: "hakt ab", verschieben: "verschiebt", anlegen: "legt an",
+    thema_wiederholt: "Gedächtnis", tagesplan_setzen: "Tagesplan" };
+  function jChip(name) {
+    if (!jAktiv) return;
+    let box = jAktiv.querySelector(".j-tools");
+    if (!box) { box = document.createElement("div"); box.className = "j-tools"; jAktiv.append(box); }
+    const c = document.createElement("span");
+    c.className = "j-tool";
+    c.textContent = WERKZEUG_WORT[name] || name;
+    box.append(c);
+    jUnten();
+  }
+
+  function jStart() {
+    jLog.innerHTML = "";
+    const vor = ["Was ist diese Woche wichtig?", "Wo habe ich Lücken?", "Zahnarzt Freitag 14 Uhr"];
+    const el = document.createElement("div");
+    el.className = "j-start";
+    el.innerHTML = `<p>Ich sehe, was der Puls sieht: Deine Aufgaben, Termine und Lernthemen. Sag mir, was ansteht — eintragen, verschieben und abhaken kann ich selbst.</p>
+      <div class="j-vor">${vor.map((v) => btn(`data-jvor="${esc(v)}"`, v, "mini")).join("")}</div>`;
+    jLog.append(el);
+  }
+
+  function jarvisAufbauen() {
+    jLog.innerHTML = "";
+    if (!jTurns.length) return jStart();
+    for (const t of jTurns) jBlase(t.role === "user" ? "du" : "jarvis", t.content);
+  }
+
+  // ---- Die Lage: derselbe Auszug, den auch das Eingabefeld oben schickt.
+  function jarvisLage() {
+    const n = berlin();
+    const wd = new Intl.DateTimeFormat("de-DE", { weekday: "long", timeZone: TZ }).format(new Date());
+    const L = [];
+    L.push("Du bist Jarvis, das Assistenz-Gehirn eines Studenten an der FOM. Sprich Deutsch und duze ihn.",
+      "Fass Dich kurz. Er steht zwischen zwei Vorlesungen, nicht vor einem Aufsatz — zwei, drei Sätze reichen meistens.",
+      "Handle über Deine Werkzeuge, statt ihm zu erklären, was er selbst klicken soll. Jede Änderung kann er unten im Hinweis zurücknehmen, also frag nicht lange nach.",
+      "Was nicht in der LAGE steht, weißt Du nicht: erfinde keine Aufgaben, Termine oder ids.",
+      `Jetzt: ${wd}, ${n.date}, ${n.time} Uhr (Europe/Berlin).`, "");
+
+    const Sek = sektionen();
+    if (Sek.length) L.push("FÄCHER (exakte Namen):", ...Sek.map((s) => "- " + s.name), "");
+
+    const A = aufgaben().sort((a, b) => (a.tage ?? 999) - (b.tage ?? 999)).slice(0, 30);
+    L.push("OFFENE AUFGABEN (id | titel | fällig | fach):",
+      ...(A.length ? A.map((t) => `- ${t.id} | ${kurz(t.titel, 70)} | ${t.datum ? t.datum + (t.uhrzeit ? " " + t.uhrzeit : "") : "ohne Datum"} | ${t.sektion?.name || "-"}`)
+        : ["(keine)"]), "");
+
+    const T = termine().slice(0, 15);
+    L.push("TERMINE (id | datum | zeit | titel):",
+      ...(T.length ? T.map((e) => `- ${e.id} | ${e.datum} | ${e.uhrzeit || "ganztägig"} | ${kurz(e.titel, 50)}${e.vorlesung ? " [Vorlesung, nicht verschiebbar]" : ""}`)
+        : ["(keine)"]), "");
+
+    const TH = themenAktiv().slice(0, 20);
+    if (TH.length) L.push("LERNTHEMEN (id | thema | fällig am):", ...TH.map((t) => `- ${t.id} | ${t.name} | ${t.faellig}`), "");
+
+    const ids = planIds();
+    if (S.db) L.push("DREI FÜR HEUTE:", ...(ids.length ? ids.map((id) => "- " + id) : ["(noch nichts gewählt)"]), "");
+
+    if (S.zustand) {
+      L.push("RECHNER:", `- Stand ${S.zustand.stand}`,
+        `- Downloads: ${S.zustand.downloads?.dateien ?? "?"} Dateien`,
+        ...warnungen().slice(0, 4).map((w) => `- Warnung: ${w.titel} (${w.detail || ""})`), "");
+    }
+
+    L.push("REGELN:",
+      '- "Termin" ist etwas mit fester Zeit, zu dem er irgendwo sein muss. Alles zu Erledigende ist eine "Aufgabe", auch mit Frist. Anrufe und Nachrichten sind Aufgaben.',
+      '- Relative Angaben ("Freitag", "morgen", "nächste Woche") rechnest Du in ein konkretes Datum ab heute um.',
+      `- Labels nur aus: ${LABELS_ERLAUBT.join(", ")}.`,
+      "- Fächer nur mit exaktem Namen aus FÄCHER, sonst ohne Fach.",
+      "- Vorlesungen und ganztägige Termine verschiebt diese Seite nicht.",
+      "- Gibt die Lage etwas nicht her, sag das, statt zu raten.");
+    return L.join("\n").slice(0, 12000);
+  }
+
+  // ---- Werkzeuge: jedes ruft genau die Funktion, an der auch ein Knopf hängt.
+  function jarvisTools() {
+    const T = [];
+    const txt = (s) => String(s ?? "");
+
+    if (S.mcp) {
+      T.push({
+        name: "aufgaben_erledigen",
+        description: "Hakt Aufgaben in Todoist ab. Nimmt ids aus OFFENE AUFGABEN. Gibt zurück, wie viele geklappt haben.",
+        inputSchema: { type: "object", properties: {
+          ids: { type: "array", items: { type: "string" }, description: "ids aus OFFENE AUFGABEN" } }, required: ["ids"] },
+        async execute({ ids }) {
+          jChip("aufgaben_erledigen");
+          const liste = (Array.isArray(ids) ? ids : []).map((id) => findeSache("aufgabe", txt(id))).filter(Boolean);
+          if (!liste.length) return "Keine dieser ids ist eine offene Aufgabe.";
+          let n = 0;
+          for (const t of liste) if (await erledigen(t)) n++;
+          return `${n} von ${liste.length} abgehakt.`;
+        },
+      });
+
+      T.push({
+        name: "verschieben",
+        description: "Verschiebt eine Aufgabe oder einen Termin auf ein neues Datum. Das bewegt die echte Frist. Vorlesungen und ganztägige Termine gehen nicht.",
+        inputSchema: { type: "object", properties: {
+          art: { type: "string", enum: ["aufgabe", "termin"] },
+          id: { type: "string" },
+          datum: { type: "string", description: "YYYY-MM-DD" },
+          uhrzeit: { type: "string", description: "HH:MM, optional; bei Terminen bleibt sonst die alte Zeit" },
+        }, required: ["art", "id", "datum"] },
+        async execute({ art, id, datum, uhrzeit }) {
+          jChip("verschieben");
+          const a = txt(art) === "termin" ? "termin" : "aufgabe";
+          const x = findeSache(a, txt(id));
+          if (!x) return "Diese id steht nicht in der Lage.";
+          if (!/^\d{4}-\d{2}-\d{2}$/.test(txt(datum))) return "datum muss YYYY-MM-DD sein.";
+          const u = /^\d{2}:\d{2}$/.test(txt(uhrzeit)) ? txt(uhrzeit) : (a === "termin" ? x.uhrzeit : null);
+          if (a === "termin" && !u) return "Ohne Uhrzeit verschiebt diese Seite keinen Termin.";
+          return (await verschieben(x, { datum: txt(datum), uhrzeit: u })) ? "Verschoben." : "Hat nicht geklappt.";
+        },
+      });
+
+      T.push({
+        name: "anlegen",
+        description: "Legt Aufgaben in Todoist und Termine im Kalender an. Höchstens 10 auf einmal. Gibt zurück, was durchging und was nicht.",
+        inputSchema: { type: "object", properties: {
+          eintraege: { type: "array", items: { type: "object", properties: {
+            art: { type: "string", enum: ["aufgabe", "termin"] },
+            titel: { type: "string" },
+            datum: { type: "string", description: "YYYY-MM-DD" },
+            uhrzeit: { type: "string", description: "HH:MM" },
+            dauerMin: { type: "number", description: "nur bei Terminen, Standard 60" },
+            fach: { type: "string", description: "exakter Name aus FÄCHER" },
+            labels: { type: "array", items: { type: "string" } },
+          }, required: ["art", "titel"] } },
+        }, required: ["eintraege"] },
+        async execute({ eintraege }) {
+          jChip("anlegen");
+          const liste = (Array.isArray(eintraege) ? eintraege : []).slice(0, 10).map(normVorschlag).filter(Boolean);
+          if (!liste.length) return "Da war nichts Anlegbares dabei.";
+          const { fertig, schief } = await anlegenKern(liste);
+          const gut = fertig.map((p) => p.titel).join("; ");
+          const boese = schief.map((f) => `${f.p.titel}: ${f.warum}`).join("; ");
+          return `${fertig.length} angelegt${gut ? " (" + kurz(gut, 160) + ")" : ""}.${schief.length ? ` Nicht geklappt: ${kurz(boese, 200)}` : ""}`;
+        },
+      });
+    }
+
+    if (S.db) {
+      T.push({
+        name: "thema_wiederholt",
+        description: "Setzt ein Lernthema in der Wiederholungs-Queue weiter. art: 'wiederholt' = normal eine Stufe, 'sitzt' = zwei Stufen, 'morgen' = morgen nochmal.",
+        inputSchema: { type: "object", properties: {
+          id: { type: "string", description: "id aus LERNTHEMEN" },
+          art: { type: "string", enum: ["wiederholt", "sitzt", "morgen"] },
+        }, required: ["id"] },
+        async execute({ id, art }) {
+          jChip("thema_wiederholt");
+          const t = findeSache("thema", txt(id));
+          if (!t) return "Dieses Thema steht nicht in der Lage.";
+          const a = ["wiederholt", "sitzt", "morgen"].includes(txt(art)) ? txt(art) : "wiederholt";
+          return (await wiederholen(t, a)) ? "Gemerkt." : "Hat nicht geklappt.";
+        },
+      });
+
+      T.push({
+        name: "tagesplan_setzen",
+        description: "Setzt die drei Dinge für heute. Höchstens drei ids aus OFFENE AUFGABEN; eine leere Liste räumt den Plan.",
+        inputSchema: { type: "object", properties: {
+          ids: { type: "array", items: { type: "string" } } }, required: ["ids"] },
+        async execute({ ids }) {
+          jChip("tagesplan_setzen");
+          const gueltig = (Array.isArray(ids) ? ids : []).map(txt)
+            .filter((id) => findeSache("aufgabe", id)).slice(0, PLAN_MAX);
+          return (await planSetzen(gueltig)) ? `Tagesplan: ${gueltig.length} von ${PLAN_MAX}.` : "Hat nicht geklappt.";
+        },
+      });
+    }
+    return T;
+  }
+
+  const jFehler = (e) => e?.code === "tools_unavailable"
+    ? "In dieser Ansicht darf ich nur reden, nicht handeln. In claude.ai kann ich auch eintragen."
+    : sampleText(e);
+
+  function jKnopf() {
+    jSenden.textContent = jLaeuft ? "■" : "↑";
+    jSenden.classList.toggle("stopp", jLaeuft);
+    jSenden.setAttribute("aria-label", jLaeuft ? "Stopp" : "Senden");
+  }
+
+  async function jarvisFragen(text) {
+    if (!S.sample) { jBlase("fehler", sampleText({ code: "not_granted" })); return; }
+
+    jTurns.push({ role: "user", content: text });
+    jBlase("du", text);
+
+    jLaeuft = true; jKnopf();
+    const el = jBlase("jarvis", "");
+    const body = el.querySelector(".j-text");
+    body.innerHTML = `<span class="denkt"><span class="spark"></span>Denkt nach …</span>`;
+    jAktiv = el;
+
+    const ctl = (jCtl = new AbortController());
+    denkt = true;
+    try {
+      // Die Lage ist eine führende user-Runde: sie wird bei jedem Zug neu
+      // gebaut, damit Claude nie mit dem Stand von vorgestern antwortet.
+      const eingabe = [{ role: "user", content: jarvisLage() }, ...jTurns.slice(-12)];
+      const opt = { signal: ctl.signal, cache: false, onText: ({ text: t }) => { body.textContent = t; jUnten(); } };
+      if (jToolsOk) {
+        const tools = jarvisTools();
+        if (tools.length) opt.tools = tools;
+      }
+      const r = await S.sample(eingabe, opt);
+      if (ctl !== jCtl) return;
+      body.textContent = r.text + (r.truncated ? " …" : "");
+      jTurns.push({ role: "assistant", content: r.text });
+      jSpeichern();
+    } catch (e) {
+      if (ctl !== jCtl) return;
+      if (e?.code === "cancelled") {
+        if (e.text) { body.textContent = e.text; jTurns.push({ role: "assistant", content: e.text }); }
+        else el.remove();
+      } else {
+        // refused zieht die Teilantwort zurück — dann darf nichts stehen bleiben.
+        body.textContent = e?.text ? e.text + "\n\n" + jFehler(e) : jFehler(e);
+        if (!e?.text) el.className = "j-turn j-fehler";
+      }
+    } finally {
+      if (ctl === jCtl) { denkt = false; jLaeuft = false; jKnopf(); jAktiv = null; }
+    }
+    jUnten();
+  }
+
+  jForm.addEventListener("submit", (ev) => {
+    ev.preventDefault();
+    if (jLaeuft) { jCtl?.abort(); return; }
+    const t = jFeld.value.trim();
+    if (!t) return;
+    jFeld.value = "";
+    jFeld.style.height = "auto";
+    jarvisFragen(t);
+  });
+  jFeld.addEventListener("keydown", (ev) => {
+    if (ev.key === "Enter" && !ev.shiftKey) { ev.preventDefault(); jForm.requestSubmit(); }
+  });
+  jFeld.addEventListener("input", () => {
+    jFeld.style.height = "auto";
+    jFeld.style.height = Math.min(jFeld.scrollHeight, 160) + "px";
+  });
+  jLog.addEventListener("click", (ev) => {
+    const b = ev.target.closest("[data-jvor]");
+    if (b && !jLaeuft) jarvisFragen(b.dataset.jvor);
+  });
+
+  async function jarvisStart() {
+    if (!S.sample) return;
+    const lim = await S.sample.limits().catch(() => null);
+    jToolsOk = !!lim?.tools;
+  }
+
   // ---------------------------------------------------------------- Blicke
   const blickeEl = $(".blicke");
   function blickSetzen(name) {
-    if (!["puls", "bahn", "gehirn"].includes(name)) name = "puls";
+    if (!["puls", "bahn", "gehirn", "jarvis"].includes(name)) name = "puls";
     blick = name;
     document.body.dataset.blick = name;
     for (const b of blickeEl.querySelectorAll("button")) b.setAttribute("aria-selected", String(b.dataset.blick === name));
-    const raum = name !== "puls";
-    $("#puls").hidden = raum;
+    const raum = name === "bahn" || name === "gehirn";
+    $("#puls").hidden = name !== "puls";
+    $("#jarvis").hidden = name !== "jarvis";
     $("#canvasLayer").hidden = !raum;
     $("#organe").hidden = !raum;
     try { history.replaceState(null, "", "#" + name); } catch (e) { /* egal */ }
     if (raum) canvasStarten(); else canvasRuhen();
-    if (!raum) renderPuls();
+    if (name === "puls") renderPuls();
+    if (name === "jarvis") { if (!jLog.childElementCount) jarvisAufbauen(); jUnten(); if (!schmal()) jFeld.focus(); }
     renderOrgane();
   }
   blickeEl.addEventListener("click", (ev) => {
@@ -1973,6 +2310,14 @@
     d("cortex/tagesplan", (v) => (S.plan = v));
     d("cortex/tafel", (v) => (S.tafelStand = v || {}));
     d("journal/intake", (v) => (S.journal = v?.eintraege || []));
+    // Nur die erste Antwort zählt: sie stellt das Gespräch wieder her. Danach
+    // schreibt der Chat selbst, und ein Echo darf ihn nicht überschreiben.
+    d("cortex/jarvis", (v) => {
+      if (jGeladen) return;
+      jGeladen = true;
+      jTurns = Array.isArray(v?.turns) ? v.turns.filter((t) => t && (t.role === "user" || t.role === "assistant") && t.content) : [];
+      if (blick === "jarvis") jarvisAufbauen();
+    });
     S.db.collection("themen").onSnapshot((q) => { S.themen = q.docs.map((x) => ({ id: x.id, ...x.data() })); neuZeichnen(); }, aufFehler);
     S.db.collection("vorschlaege").onSnapshot((q) => { S.vorschlaege = q.docs.map((x) => ({ id: x.id, ...x.data() })); neuZeichnen(); }, aufFehler);
     S.db.collection("agenten").onSnapshot((q) => { S.agenten = Object.fromEntries(q.docs.map((x) => [x.id, x.data()])); neuZeichnen(); }, aufFehler);
@@ -2442,7 +2787,9 @@
     Object.assign(S, { mcp, db, sample, caps: true });
     if (!db) S.tafelStand = {};
     if (mcp) { watchTodoist(); watchKalender(); }
-    if (db) dbAbo();
+    if (db) dbAbo(); else jGeladen = true;
+    jarvisStart();
+    if (blick === "jarvis" && !jLog.childElementCount && jGeladen) jarvisAufbauen();
     neuZeichnen();
   })();
 
