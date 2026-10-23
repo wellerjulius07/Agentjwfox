@@ -49,9 +49,9 @@ Sport ist gesetzt, alles andere plant sich darum herum.
 Gestrichen: 17 Backup, 21 LLM-Wochenkommentar.
 
 ## Spezifikation 39 – Trainingszeiten
-Alle Termine landen in einem eigenen Google-Kalender **„Training“**.
+Alle Termine landen im Hauptkalender (Google, Gmail-Konto).
 
-**Gym** – wiederkehrende Termine, nativ ohne Skript:
+**Gym** – wiederkehrende Termine, nativ ohne Skript (✅ angelegt ab 26.10.2026):
 | Tag | Zeit          | Inhalt                        |
 |-----|---------------|-------------------------------|
 | Mo  | 17:00–18:15   | Oberkörper, Rücken            |
