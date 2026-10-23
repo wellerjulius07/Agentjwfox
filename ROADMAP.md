@@ -2,11 +2,33 @@
 
 ## Ziel
 
-> _Hier beschreiben, was automatisiert werden soll und warum._
->
-> ...
+Die Prototypen sollen auf dem Mini-PC, der dauerhaft läuft, automatisiert werden.
+Das soll **ohne Agenten-Usage** gehen: Skripte laufen auf festen Zeitplänen,
+ein LLM kommt nur dort zum Einsatz, wo wirklich ein Urteil gebraucht wird.
+
+**Prinzip:** Alles, was deterministisch ist, wird ein Skript und kostet 0 Usage.
+Ein LLM bekommt nur fertige Ergebnisse oder Änderungen zu sehen, gebündelt und selten
+(z.B. 1× pro Woche).
+
+## Bestand
+| Projekt          | Status    | Automationskandidaten (ohne LLM)                              |
+|------------------|-----------|---------------------------------------------------------------|
+| Money Simulator  | Prototyp  | Nächtliche Exportläufe, Kurse per API ziehen, Vergleich zum Vortag |
+| Semester Cortex  | Prototyp  | Fristen-/Termin-Erinnerungen, Kalender-Sync (ICS)              |
+| kcal dot         | Prototyp  | Tages-/Wochensummen, Erinnerung bei fehlendem Eintrag          |
+| Tagesform        | Prototyp  | Tägliche Check-in-Erinnerung, Verlauf aggregieren              |
+| Fitness Tracker  | Prototyp  | Datenimport, Wochenstatistik                                   |
+
+## Querschnitt (Mini-PC)
+- Zeitplan: systemd-Timer statt cron (`Persistent=true` holt Läufe nach, die während einer Downtime verpasst wurden, und es gibt Logs über journald)
+- Fehler-Alarm: `OnFailure=` → Push-Nachricht (ntfy oder Telegram-Bot)
+- Backups: nächtlich alle Projektdaten (restic/rsync)
+- Heartbeat: Mini-PC meldet sich täglich, Alarm bleibt bei Ausfall nicht aus
+- Wochenreport: Python-Skript erzeugt HTML/Markdown aus allen 5 Projekten (kein LLM)
+- Optional LLM: 1× pro Woche kommentiert ein Modell den fertigen Report (API mit kleinem Modell, Kosten im Cent-Bereich)
 
 ## Phase 0 – Bestandsaufnahme
+- [ ] Wo liegen die 5 Prototypen (Repo, Sprache, Datenformat)?
 - [ ] Wiederkehrende Aufgaben sammeln (was, wie oft, wie lange dauert es)
 - [ ] Nach Aufwand × Häufigkeit priorisieren
 - [ ] Beteiligte Tools/Konten auflisten (Mail, Kalender, Tasks, APIs …)
