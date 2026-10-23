@@ -1,0 +1,8 @@
+[Unit]
+Description=Laeufe fuer die kommende Woche einplanen
+
+[Service]
+Type=oneshot
+# Pfade an den Mini-PC anpassen; NTFY_TOPIC fuer die Push-Nachricht
+Environment=NTFY_TOPIC=
+ExecStart=%h/agentjwfox-venv/bin/python %h/Agentjwfox/training/plan_runs.py

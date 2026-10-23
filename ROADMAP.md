@@ -25,7 +25,7 @@ Sport ist gesetzt, alles andere plant sich darum herum.
 | Garmin-Daten     | Sync-Entwurf in `garmin/` (Entscheidung, ob er bleibt, offen) |
 
 ## Stufe 1 – sofort spürbar
-- [ ] **39 Trainingszeiten im Kalender reservieren** (Spezifikation unten)
+- [x] **39 Trainingszeiten im Kalender reservieren** (Spezifikation unten; Skript in `training/`, Einrichtung auf dem Mini-PC offen)
 - [ ] **29 Morgenbriefing:** eine Push-Nachricht mit Terminen, Top-3-Aufgaben, Training heute und Garmin-Werten (enthält 1)
 - [ ] **13 Erinnerung an Fristen** (Semester Cortex, 7/3/1 Tag vorher)
 - [ ] **32 Todoist-Aufräumen:** Überfälliges gesammelt auf heute, dazu ein Wochenrückblick
