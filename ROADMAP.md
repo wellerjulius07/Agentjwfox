@@ -18,6 +18,7 @@ Ein LLM bekommt nur fertige Ergebnisse oder Änderungen zu sehen, gebündelt und
 | kcal dot         | Prototyp  | Tages-/Wochensummen, Erinnerung bei fehlendem Eintrag          |
 | Tagesform        | Prototyp  | Tägliche Check-in-Erinnerung, Verlauf aggregieren              |
 | Fitness Tracker  | Prototyp  | Datenimport, Wochenstatistik                                   |
+| Garmin-Daten     | Sync da   | `garmin/`: 2× täglich Schlaf, HRV, Stress, Body Battery, Readiness, Aktivitäten → SQLite. Quelle für Tagesform und Fitness Tracker |
 
 ## Querschnitt (Mini-PC)
 - Zeitplan: systemd-Timer statt cron (`Persistent=true` holt Läufe nach, die während einer Downtime verpasst wurden, und es gibt Logs über journald)

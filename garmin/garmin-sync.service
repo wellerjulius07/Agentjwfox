@@ -1,0 +1,8 @@
+[Unit]
+Description=Garmin-Gesundheitsdaten synchronisieren
+# OnFailure=notify-failure@%n.service   # einkommentieren, sobald der Push-Alarm steht
+
+[Service]
+Type=oneshot
+# Pfade an den Mini-PC anpassen
+ExecStart=%h/garmin-venv/bin/python %h/Agentjwfox/garmin/garmin_sync.py
