@@ -2,53 +2,66 @@
 
 ## Ziel
 
-Die Prototypen sollen auf dem Mini-PC, der dauerhaft läuft, automatisiert werden.
-Das soll **ohne Agenten-Usage** gehen: Skripte laufen auf festen Zeitplänen,
-ein LLM kommt nur dort zum Einsatz, wo wirklich ein Urteil gebraucht wird.
+Die Prototypen und der Alltag werden auf dem Mini-PC automatisiert, der dauerhaft läuft.
+Das soll **ohne Agenten-Usage** gehen: Skripte laufen auf festen Zeitplänen, ein LLM nur dort,
+wo wirklich ein Urteil gebraucht wird.
 
-**Prinzip:** Alles, was deterministisch ist, wird ein Skript und kostet 0 Usage.
-Ein LLM bekommt nur fertige Ergebnisse oder Änderungen zu sehen, gebündelt und selten
-(z.B. 1× pro Woche).
+**Fokus derzeit:** Den Alltag geschafft bekommen, ohne den Sport zu vernachlässigen.
+Sport ist gesetzt, alles andere plant sich darum herum.
+
+**Prinzip:** Was deterministisch ist, wird ein Skript (0 Usage). Was nativ geht
+(Kalender, Gmail-Filter), braucht gar keinen Code.
+
+**Arbeitsweise:** Ideen sammeln → priorisieren → erst auf ausdrückliches Go bauen.
 
 ## Bestand
-| Projekt          | Status    | Automationskandidaten (ohne LLM)                              |
-|------------------|-----------|---------------------------------------------------------------|
-| Money Simulator  | Prototyp  | Nächtliche Exportläufe, Kurse per API ziehen, Vergleich zum Vortag |
-| Semester Cortex  | Prototyp  | Fristen-/Termin-Erinnerungen, Kalender-Sync (ICS)              |
-| kcal dot         | Prototyp  | Tages-/Wochensummen, Erinnerung bei fehlendem Eintrag          |
-| Tagesform        | Prototyp  | Tägliche Check-in-Erinnerung, Verlauf aggregieren              |
-| Fitness Tracker  | Prototyp  | Datenimport, Wochenstatistik                                   |
-| Garmin-Daten     | Sync da   | `garmin/`: 2× täglich Schlaf, HRV, Stress, Body Battery, Readiness, Aktivitäten → SQLite. Quelle für Tagesform und Fitness Tracker |
+| Projekt          | Status                         |
+|------------------|--------------------------------|
+| Semester Cortex  | Prototyp                       |
+| kcal dot         | Prototyp                       |
+| Tagesform        | Prototyp                       |
+| Money Simulator  | Prototyp                       |
+| Fitness Tracker  | Prototyp                       |
+| Garmin-Daten     | Sync-Entwurf in `garmin/` (Entscheidung, ob er bleibt, offen) |
 
-## Querschnitt (Mini-PC)
-- Zeitplan: systemd-Timer statt cron (`Persistent=true` holt Läufe nach, die während einer Downtime verpasst wurden, und es gibt Logs über journald)
-- Fehler-Alarm: `OnFailure=` → Push-Nachricht (ntfy oder Telegram-Bot)
-- Backups: nächtlich alle Projektdaten (restic/rsync)
-- Heartbeat: Mini-PC meldet sich täglich, Alarm bleibt bei Ausfall nicht aus
-- Wochenreport: Python-Skript erzeugt HTML/Markdown aus allen 5 Projekten (kein LLM)
-- Optional LLM: 1× pro Woche kommentiert ein Modell den fertigen Report (API mit kleinem Modell, Kosten im Cent-Bereich)
+## Stufe 1 – sofort spürbar
+- [ ] **39 Trainingszeiten im Kalender reservieren** (Spezifikation unten)
+- [ ] **29 Morgenbriefing:** eine Push-Nachricht mit Terminen, Top-3-Aufgaben, Training heute und Garmin-Werten (enthält 1)
+- [ ] **13 Erinnerung an Fristen** (Semester Cortex, 7/3/1 Tag vorher)
+- [ ] **32 Todoist-Aufräumen:** Überfälliges gesammelt auf heute, dazu ein Wochenrückblick
+- [ ] **16 Fehler-Alarm:** Push-Nachricht, wenn ein Skript fehlschlägt
 
-## Phase 0 – Bestandsaufnahme
-- [ ] Wo liegen die 5 Prototypen (Repo, Sprache, Datenformat)?
-- [ ] Wiederkehrende Aufgaben sammeln (was, wie oft, wie lange dauert es)
-- [ ] Nach Aufwand × Häufigkeit priorisieren
-- [ ] Beteiligte Tools/Konten auflisten (Mail, Kalender, Tasks, APIs …)
+## Stufe 2 – entlastet weiter
+- [ ] 5 Garmin-Aktivitäten automatisch in den Fitness Tracker
+- [ ] 31 Erinnerung zur Schlafenszeit, abgeleitet vom ersten Termin am nächsten Morgen
+- [ ] 2 Frühwarnung bei Krankheit (HRV fällt, Ruhepuls steigt)
+- [ ] 22 Moodle/ILIAS: neue Materialien laden und Push-Nachricht schicken
+- [ ] 28 Gmail-Filter für Uni, Rechnungen, Newsletter (nativ, kein Code)
 
-## Phase 1 – Quick Wins
-- [ ] Top-1-Aufgabe automatisieren, manuell auslösbar
-- [ ] Ergebnis eine Woche lang prüfen
+## Stufe 3 – später
+- Garmin: 3 Tagesform vorausfüllen, 4 kcal-Tagesziel an Aktivität anpassen, 6 Trends, 7 Zusammenhänge
+- Money Simulator: 8 nächtliche Exportläufe, 9 Kurse per API, 10 Alarm bei Abweichung, 11 Monats-Snapshots, 12 Szenarien
+- Uni: 14 Vorlesungsplan in den Kalender, 15 Prüfungs-Countdown, 23 neue Noten, 24 Karteikarten-Erinnerung
+- Geld: 25 Kontoauszüge kategorisieren, 26 Abo-Kündigungsfristen, 27 Rechnungen nach Drive
+- Alltag: 30 Regen- und Bahn-Warnung, 33 Notion-Journal, 34 Müll-ICS (nativ), 35 Ordner sortieren, 36 Preisalarm, 37 Paket-Tracking, 38 Discover Weekly archivieren
+- Mini-PC: 18 Heartbeat, 19 Wochenreport, 20 lokales Dashboard
 
-## Phase 2 – Zeitgesteuert
-- [ ] Quick Wins auf Zeitplan stellen (täglich/wöchentlich)
-- [ ] Benachrichtigung bei Fehlern
+Gestrichen: 17 Backup, 21 LLM-Wochenkommentar.
 
-## Phase 3 – Ereignisgesteuert
-- [ ] Auf Ereignisse reagieren (neue Mail, neuer Termin, Webhook)
-- [ ] Mehrere Schritte verketten
+## Spezifikation 39 – Trainingszeiten
+Alle Termine landen in einem eigenen Google-Kalender **„Training“**.
 
-## Phase 4 – Ausbau
-- [ ] Nächste Aufgaben aus Phase 0 nachziehen
-- [ ] Laufende Automationen regelmäßig ausmisten
+**Gym** – wiederkehrende Termine, nativ ohne Skript:
+| Tag | Zeit          | Inhalt                        |
+|-----|---------------|-------------------------------|
+| Mo  | 17:00–18:15   | Oberkörper, Rücken            |
+| Di  | 17:00–18:15   | Beine                         |
+| Do  | 17:00–18:15   | Oberkörper, Arme, Rücken      |
 
-## Backlog / Ideen
-- 
+**Läufe** – Skript, sonntagabends für die kommende Woche:
+- 3 Läufe, Block je 1:15 (ca. 50 min Zone 2 plus Umziehen und Duschen)
+- Fenster: Mo–Fr 18:00–21:00, Sa/So 17:00–20:00
+- Reihenfolge der Tage: Fr, Sa, So → Do (frühestens 18:30, nach dem Gym) → Mi (nur locker). Montag nie, wegen Beintag am Dienstag.
+- Möglichst nicht an zwei Tagen hintereinander
+- Nur in freie Lücken; bestehende Termine haben Vorrang
+- Danach eine Push-Nachricht mit den Lauf-Terminen; Warnung, wenn keine 3 Lücken frei sind
